@@ -993,7 +993,7 @@ crear un expediente el primer día. *(H-15)*
 ### Lo que este documento pide crear
 
 Nada de esto existe en PostgreSQL. Pero sí está en el espejo de SQL Server
-(`packages/db/schema/esquema_sqlserver.sql`), marcado como `PROPUESTA`, para
+(`packages/db/esquema/esquema_sqlserver.sql`), marcado como `PROPUESTA`, para
 poder verlo en el diagrama junto al resto antes de construirlo.
 
 | Qué | Para qué |

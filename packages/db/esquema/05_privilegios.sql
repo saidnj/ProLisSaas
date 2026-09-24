@@ -199,9 +199,7 @@ GRANT  EXECUTE ON FUNCTION core.activar_usuario(bigint, text) TO lis_app;
 -- Mismo razonamiento que cerro core.rol_permiso y plataforma.modulo_sucursal
 -- en H-99: si hay una funcion que comprueba, la puerta de al lado se cierra.
 --
--- Y el UPDATE se cierra a las DOS columnas que el API toca directo: el
--- contador de intentos y la fecha del ultimo acceso. Todo lo demas -- el
--- rol, el estado, la clave -- entra por una funcion que comprueba:
+-- Y el UPDATE se cierra ENTERO: todo entra por una funcion que comprueba:
 --
 --   rol_id         core.cambiar_rol()         el rol del propietario no se
 --                                             toca; un administrador solo lo
@@ -209,13 +207,36 @@ GRANT  EXECUTE ON FUNCTION core.activar_usuario(bigint, text) TO lis_app;
 --   estado, clave  generar_activacion / activar_usuario / login_fallido /
 --                  desbloquear_usuario / suspender_usuario / reactivar_usuario
 --   username       core.cambiar_username()
+--   intentos, ultimo acceso   login_fallido() / registrar_acceso(): solo la
+--                             sesion propia. Antes estas dos columnas tenian
+--                             UPDATE abierto "para el login", y cualquier
+--                             sesion podia dejarle intentos_fallidos = 4 a un
+--                             companero.
 --
 -- Antes el UPDATE estaba abierto entero "para que el admin edite el rol".
 -- Con el rol abierto, la regla de quien nombra administradores habria sido
 -- una sugerencia: un UPDATE del API y listo.
 REVOKE INSERT, UPDATE ON core.usuario FROM lis_app;
 
-GRANT  UPDATE (intentos_fallidos, ultimo_acceso_en) ON core.usuario TO lis_app;
+REVOKE ALL     ON FUNCTION core.registrar_acceso(bigint) FROM PUBLIC;
+
+GRANT  EXECUTE ON FUNCTION core.registrar_acceso(bigint) TO lis_app;
+
+-- Y el SELECT va por columnas, SIN password_hash. Con el SELECT de tabla,
+-- cualquier sesion de la empresa (Recepcion incluida) podia leer los hashes
+-- de sus companeros: RLS recorta filas, no columnas. Nadie del lado de
+-- lis_app necesita el hash: el login lo compara buscar_credencial() y la
+-- activacion activar_usuario(), las dos SECURITY DEFINER.
+--
+-- OJO: revocar solo la columna no sirve (GRANT de tabla + REVOKE de columna
+-- "no hace lo que uno espera", dice el manual): se quita el SELECT de la
+-- tabla entera y se dan las columnas una por una. Una columna nueva en
+-- core.usuario no la ve lis_app hasta que se agregue aqui: falla cerrado.
+REVOKE SELECT ON core.usuario FROM lis_app;
+
+GRANT  SELECT (usuario_id, empresa_id, empleado_id, rol_id, username, estado,
+               intentos_fallidos, ultimo_acceso_en, creado_en)
+       ON core.usuario TO lis_app;
 
 REVOKE ALL     ON FUNCTION core.cambiar_rol(bigint, bigint, text) FROM PUBLIC;
 

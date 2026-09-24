@@ -1,7 +1,7 @@
 # Cómo leer y escribir aquí
 
 Esta carpeta define **cómo se comporta el sistema**, no cómo está escrito. El esquema
-de base de datos ya existe en `ProLisSaas/packages/db/schema`; aquí se documenta el
+de base de datos ya existe en `ProLisSaas/packages/db/esquema`; aquí se documenta el
 flujo de trabajo que ese esquema tiene que sostener.
 
 ## Para qué sirve

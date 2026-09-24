@@ -286,14 +286,18 @@ export class AuthService {
         JOIN core.rol      r  ON r.rol_id     = u.rol_id  AND r.empresa_id = u.empresa_id
         WHERE u.usuario_id = core.usuario_actual()`;
 
-      // El UPDATE va DESPUES de leer, a proposito: ultimoAccesoEn tiene que
-      // ser el acceso ANTERIOR. Si se pisa primero, la pantalla saluda con
+      // Se anota el acceso DESPUES de leer, a proposito: ultimoAccesoEn tiene
+      // que ser el acceso ANTERIOR. Si se pisa primero, la pantalla saluda con
       // "tu ultimo ingreso fue hace 0 segundos", que no le sirve a nadie --
       // y lo que de verdad sirve, "alguien entro anoche y no fui yo", se
       // pierde.
-      await tx.$executeRaw`
-        UPDATE core.usuario SET ultimo_acceso_en = now(), intentos_fallidos = 0
-         WHERE usuario_id = ${cred.usuario_id}`;
+      //
+      // Va por core.registrar_acceso() y no por un UPDATE: lis_app ya no
+      // escribe intentos_fallidos ni ultimo_acceso_en (con eso abierto,
+      // cualquier sesion podia dejarle intentos_fallidos = 4 a un companero).
+      // La funcion solo acepta la sesion propia. El ::text es por el void
+      // (ver comun/permiso.ts).
+      await tx.$queryRaw`SELECT core.registrar_acceso(${cred.usuario_id})::text AS ok`;
 
       return filas[0]?.sesion;
     });

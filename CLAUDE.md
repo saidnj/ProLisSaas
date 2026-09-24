@@ -16,7 +16,7 @@ y el modelo que la resuelve está en `documentacion/flujos/06-el-paciente-entre-
 | `documentacion/glosario.md` | Qué significa cada término y con cuál no confundirlo |
 | `documentacion/documentacion.html` | **El visor.** Doble clic: lleva los documentos dentro |
 | `documentacion/visor.html` | La plantilla del visor, para servir en vivo |
-| `packages/db/schema/` | El esquema. Diecinueve `.sql` que corren en orden |
+| `packages/db/esquema/` | El esquema vivo: `01`–`08` cargan en orden, `91`–`99` son las pruebas. `packages/db/parches/` lleva lo que se le aplicó a una base ya cargada, en orden de fecha |
 | `.claude/agents/` | Los dos revisores |
 
 El esquema manda sobre lo que existe hoy. La documentación manda sobre lo que
@@ -39,6 +39,9 @@ tiene que pasar. Cuando no coinciden, es un hallazgo, no una preferencia.
 - **Nada se borra.** `DELETE` está revocado. Se anula con motivo, se marca como
   fusionado, se emite una versión nueva.
 - **La base no tiene triggers, y ninguna tabla lleva `actualizado_en`** (`E-22`).
+  Una sola excepción, documentada donde se define: `tg_empleado_activo` (empleado
+  inactivo = cuenta suspendida), que hace lo que haría una función pero sobre un
+  `UPDATE` que el API hace directo.
   Quién cambió qué y cuándo es trabajo de `audit.evento`, que guarda usuario,
   acción, antes y después; una fecha suelta no sabe decir qué cambió ni quién, y
   donde más importa —los permisos de un rol— el cambio ni siquiera es un `UPDATE`.

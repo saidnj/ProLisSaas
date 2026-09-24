@@ -33,8 +33,10 @@ BEGIN;
     (SELECT rol_id FROM core.rol WHERE empresa_id=core.empresa_actual() AND nombre='Recepcion'),
     'prueba.activacion') AS usuario_nuevo;
 
+  RESET ROLE;  -- el hash ya no lo lee lis_app: se comprueba como postgres
   SELECT username, estado, password_hash = '' AS sin_clave
   FROM core.usuario WHERE username='prueba.activacion';
+  SET LOCAL ROLE lis_app;
 
 \echo ''
 \echo '################ 2 · genera el codigo ################'

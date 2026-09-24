@@ -150,7 +150,7 @@ SET LOCAL lis.empresa_id = :'emp'; SET LOCAL lis.usuario_id = :'u_marlon'; SET L
 SET LOCAL ROLE lis_app;
 UPDATE core.usuario SET rol_id = :r_admin WHERE usuario_id = :u_carla;
 ROLLBACK;
-\echo '    (y las dos columnas del API siguen abiertas: esperado UPDATE 1)'
+\echo '    (y las dos columnas que antes usaba el login tambien estan cerradas: esperado ERROR permission denied; van por registrar_acceso, seccion 20)'
 BEGIN;
 SET LOCAL lis.empresa_id = :'emp'; SET LOCAL lis.usuario_id = :'u_marlon'; SET LOCAL lis.sucursal_id = :'s_cen';
 SET LOCAL ROLE lis_app;
@@ -239,7 +239,9 @@ BEGIN;
 SET LOCAL lis.empresa_id = :'emp'; SET LOCAL lis.usuario_id = :'u_beto'; SET LOCAL lis.sucursal_id = :'s_cen';
 SET LOCAL ROLE lis_app;
 SELECT core.desbloquear_usuario(:u_carla, 'se equivoco de teclado');
+RESET ROLE;  -- el hash ya no lo lee lis_app (seccion 20): se comprueba como postgres
 SELECT estado, intentos_fallidos, password_hash = :'hash_antes' AS misma_clave FROM core.usuario WHERE usuario_id = :u_carla;
+SET LOCAL ROLE lis_app;
 SELECT accion, datos_antes->>'intentos_fallidos' AS intentos_antes, datos_despues->>'motivo' AS motivo
 FROM audit.evento WHERE accion = 'usuario.desbloquear';
 SELECT core.desbloquear_usuario(:u_marlon, 'lo intento un administrador');
@@ -314,7 +316,9 @@ SET LOCAL ROLE lis_app;
 INSERT INTO core.empleado (empresa_id, nombres, apellidos, activo) VALUES (:emp, 'Inactivo', 'Desde el inicio', false)
   RETURNING empleado_id AS e_inactivo \gset
 SELECT core.crear_usuario(:e_inactivo, :r_recep, 'inactivo.inicio') AS u_inactivo \gset
+RESET ROLE;  -- el hash ya no lo lee lis_app (seccion 20)
 SELECT estado, password_hash = '' AS sin_clave FROM core.usuario WHERE usuario_id = :u_inactivo;
+SET LOCAL ROLE lis_app;
 SAVEPOINT sp;
 SELECT * FROM core.generar_activacion(:u_inactivo, 'hash-de-prueba', 24);
 ROLLBACK TO SAVEPOINT sp;
@@ -469,6 +473,30 @@ SET LOCAL ROLE lis_app;
 SAVEPOINT s19e;
 UPDATE core.empleado SET telefono = '9999-0005' WHERE empleado_id = (SELECT empleado_id FROM core.usuario WHERE usuario_id = :u_carla);
 ROLLBACK TO SAVEPOINT s19e;
+ROLLBACK;
+
+\echo ''
+\echo '=== 20 · core.usuario cerrada por columnas ================================='
+\echo '    esperado, en orden:'
+\echo '      a. lis_app lee username y estado: 1 fila'
+\echo '      b. lis_app lee password_hash: ERROR permission denied for table usuario'
+\echo '      c. lis_app escribe intentos_fallidos a mano: ERROR permission denied'
+\echo '      d. registrar_acceso para OTRO usuario: ERROR "la sesion no es la del usuario"'
+\echo '      e. registrar_acceso propio: intentos 0 y ultimo_acceso_en de hoy'
+BEGIN;
+UPDATE core.usuario SET intentos_fallidos = 3 WHERE usuario_id = :u_beto;
+SET LOCAL lis.empresa_id = :'emp'; SET LOCAL lis.usuario_id = :'u_beto'; SET LOCAL lis.sucursal_id = :'s_cen';
+SET LOCAL ROLE lis_app;
+SELECT username, estado FROM core.usuario WHERE usuario_id = :u_beto;
+SAVEPOINT s20;
+SELECT password_hash FROM core.usuario WHERE usuario_id = :u_beto;
+ROLLBACK TO SAVEPOINT s20;
+UPDATE core.usuario SET intentos_fallidos = 0 WHERE usuario_id = :u_carla;
+ROLLBACK TO SAVEPOINT s20;
+SELECT core.registrar_acceso(:u_carla);
+ROLLBACK TO SAVEPOINT s20;
+SELECT core.registrar_acceso(:u_beto);
+SELECT intentos_fallidos, ultimo_acceso_en::date = current_date AS hoy FROM core.usuario WHERE usuario_id = :u_beto;
 ROLLBACK;
 
 -- Beto vuelve a ser Analista: el archivo deja la base como la encontro.

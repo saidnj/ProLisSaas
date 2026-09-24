@@ -4,7 +4,10 @@
 -- Aqui vive el comportamiento. Cada rol puede lo suyo y solo lo suyo, y se
 -- comprueba DENTRO de estas funciones, no solo en la pantalla.
 --
--- La base no tiene ningun trigger a proposito (E-22): nada ocurre por detras.
+-- La base no tiene triggers a proposito (E-22): nada ocurre por detras. La
+-- unica excepcion es tg_empleado_activo (empleado inactivo = cuenta
+-- suspendida), documentada donde se define; hace lo que haria una funcion,
+-- pero sobre un UPDATE que el API hace directo.
 --
 -- Generado desde los archivos por modulo. Se reparte por TIPO de objeto
 -- para poder leer el modelo entero de un tiron.
@@ -532,6 +535,35 @@ $fn$;
 --
 -- Como generar_activacion(): sesion, permiso, misma empresa, y la cuenta
 -- de un administrador solo la toca el propietario (puede_tocar_cuenta).
+-- ---------------------------------------------------------------------
+-- core.registrar_acceso() - la clave cuadro: se anota la hora y se limpia
+-- el contador. Espejo de login_fallido(), y por la misma razon SECURITY
+-- DEFINER: lis_app ya no escribe intentos_fallidos ni ultimo_acceso_en a
+-- mano. Con ese UPDATE por columna abierto, cualquier sesion de la empresa
+-- podia dejarle intentos_fallidos = 4 a un companero y bloquearlo con el
+-- siguiente error suyo. Solo sirve para la sesion propia.
+--
+-- El API la llama DESPUES de leer ultimo_acceso_en, a proposito: la
+-- pantalla saluda con el acceso ANTERIOR ("alguien entro anoche y no fui
+-- yo"), no con "hace 0 segundos".
+-- ---------------------------------------------------------------------
+CREATE OR REPLACE FUNCTION core.registrar_acceso(p_usuario_id bigint)
+RETURNS void
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = pg_catalog, core
+AS $fn$
+BEGIN
+  IF core.usuario_actual() IS DISTINCT FROM p_usuario_id THEN
+    RAISE EXCEPTION 'registrar_acceso: la sesion no es la del usuario' USING ERRCODE = '42501';
+  END IF;
+
+  UPDATE core.usuario
+     SET ultimo_acceso_en = now(), intentos_fallidos = 0
+   WHERE usuario_id = p_usuario_id;
+END
+$fn$;
+
 -- ---------------------------------------------------------------------
 CREATE OR REPLACE FUNCTION core.desbloquear_usuario(
   p_usuario_id bigint,
