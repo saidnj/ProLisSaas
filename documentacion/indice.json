@@ -1,0 +1,100 @@
+{
+  "proyecto": "ProLisSaas",
+  "grupos": [
+    {
+      "nombre": "Cómo se usa esto",
+      "docs": [
+        {
+          "ruta": "00-como-leer.md",
+          "titulo": "Cómo leer y escribir aquí"
+        },
+        {
+          "ruta": "glosario.md",
+          "titulo": "Glosario"
+        },
+        {
+          "ruta": "hallazgos.md",
+          "titulo": "Hallazgos y errores"
+        }
+      ]
+    },
+    {
+      "nombre": "Core · territorios",
+      "docs": [
+        {
+          "ruta": "core/00-panorama.md",
+          "titulo": "Panorama de core"
+        },
+        {
+          "ruta": "core/01-la-empresa.md",
+          "titulo": "La empresa"
+        },
+        {
+          "ruta": "core/02-la-sucursal.md",
+          "titulo": "La sucursal"
+        },
+        {
+          "ruta": "core/03-la-gente.md",
+          "titulo": "La gente que trabaja"
+        },
+        {
+          "ruta": "core/04-el-paciente.md",
+          "titulo": "El paciente"
+        },
+        {
+          "ruta": "core/05-la-identidad.md",
+          "titulo": "La identidad compartida"
+        },
+        {
+          "ruta": "core/06-por-donde-entra.md",
+          "titulo": "Por dónde entra"
+        },
+        {
+          "ruta": "core/07-la-visita.md",
+          "titulo": "La visita"
+        },
+        {
+          "ruta": "core/08-el-documento.md",
+          "titulo": "El documento"
+        },
+        {
+          "ruta": "core/09-el-rastro.md",
+          "titulo": "El rastro"
+        }
+      ]
+    },
+    {
+      "nombre": "Flujos conjuntos",
+      "docs": [
+        {
+          "ruta": "flujos/01-alta-de-un-cliente.md",
+          "titulo": "Alta de un cliente"
+        },
+        {
+          "ruta": "flujos/02-alta-de-personal.md",
+          "titulo": "Alta de personal"
+        },
+        {
+          "ruta": "flujos/03-admision-de-un-paciente.md",
+          "titulo": "Admisión de un paciente"
+        },
+        {
+          "ruta": "flujos/04-derivacion.md",
+          "titulo": "Derivación entre empresas"
+        },
+        {
+          "ruta": "flujos/05-emision-y-entrega.md",
+          "titulo": "Emisión y entrega"
+        },
+        {
+          "ruta": "flujos/06-el-paciente-entre-dos-empresas.md",
+          "titulo": "El paciente entre dos empresas"
+        },
+        {
+          "ruta": "flujos/07-como-se-entra.md",
+          "titulo": "Cómo se entra"
+        }
+      ]
+    }
+  ]
+}

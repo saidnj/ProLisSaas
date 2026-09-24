@@ -1,0 +1,209 @@
+<app-encabezado />
+
+<div class="pagina">
+
+  @if (codigoNuevo(); as c) {
+    <!-- El codigo nuevo, una sola vez. La misma pantalla que al crear. -->
+    <app-codigo-activacion
+      [codigo]="c.codigo"
+      [nombre]="c.nombre"
+      [venceEn]="c.venceEn"
+      [motivo]="c.motivo"
+      (listo)="entregado()" />
+
+  } @else {
+
+  <div class="migas">
+    <a routerLink="/empleados">Empleados</a> <span>/</span>
+    <span>{{ empleado() ? empleado()!.nombres + ' ' + empleado()!.apellidos : 'Ficha' }}</span>
+  </div>
+
+  @if (cargando()) {
+    <p class="cargando">Cargando...</p>
+
+  } @else if (error()) {
+    <p class="error-caja" role="alert">{{ error() }}</p>
+    <a class="boton suave" routerLink="/empleados">Volver a la lista</a>
+
+  } @else if (empleado(); as e) {
+
+    <div class="cabecera">
+      <div>
+        <h1>{{ e.nombres }} {{ e.apellidos }}</h1>
+        <p class="sub">
+          {{ e.cargo ?? 'Sin cargo asignado' }}
+          @if (e.activo) {
+            · <span class="chip si">Activo</span>
+          } @else {
+            · <span class="chip no">Inactivo</span>
+          }
+        </p>
+      </div>
+
+      <div class="acciones">
+        <a class="boton fantasma" routerLink="/empleados">Volver</a>
+        @if (puedeAdministrar() && porQueNoFicha() === null) {
+          <a class="boton primario" [routerLink]="['/empleados', e.empleadoId, 'editar']">Editar</a>
+        }
+      </div>
+    </div>
+
+    @if (porQueNoFicha(); as motivo) {
+      <p class="aviso-demo">{{ motivo }}</p>
+    }
+
+    <div class="panel">
+      <div class="cuerpo">
+        <dl class="datos">
+          <div class="dato">
+            <dt>Nombres</dt>
+            <dd>{{ e.nombres }}</dd>
+          </div>
+          <div class="dato">
+            <dt>Apellidos</dt>
+            <dd>{{ e.apellidos }}</dd>
+          </div>
+          <div class="dato">
+            <dt>Numero de identidad</dt>
+            <dd [class.vacio]="!e.documento">{{ e.documento ?? 'sin registrar' }}</dd>
+          </div>
+          <div class="dato">
+            <dt>Cargo</dt>
+            <dd [class.vacio]="!e.cargo">{{ e.cargo ?? 'sin asignar' }}</dd>
+          </div>
+          <div class="dato">
+            <dt>Telefono</dt>
+            <dd [class.vacio]="!e.telefono">{{ e.telefono ?? 'sin registrar' }}</dd>
+          </div>
+          <div class="dato">
+            <dt>Correo</dt>
+            <dd [class.vacio]="!e.correo">{{ e.correo ?? 'sin registrar' }}</dd>
+          </div>
+          <div class="dato">
+            <dt>Numero de colegiacion</dt>
+            <dd [class.vacio]="!e.numeroColegiacion">
+              {{ e.numeroColegiacion ?? 'no aplica' }}
+            </dd>
+          </div>
+          <div class="dato">
+            <dt>Cuenta de usuario</dt>
+            <dd [class.vacio]="!e.username">
+              {{ e.username ?? 'no tiene cuenta para entrar al sistema' }}
+              @if (e.rol) { <span class="chip info">{{ e.rol }}</span> }
+            </dd>
+          </div>
+          @if (e.usuarioId !== null) {
+            <div class="dato">
+              <dt>Sedes donde entra</dt>
+              <dd>
+                @for (s of susSedes(); track s.sucursalId) {
+                  <span class="chip info">{{ s.codigo }} · {{ s.nombre }}</span>
+                } @empty {
+                  <span class="vacio">
+                    ninguna — tiene cuenta pero no puede entrar a ningun lado
+                  </span>
+                }
+              </dd>
+            </div>
+
+            <!-- ======================================================
+                 EL ESTADO DE LA CUENTA, Y LO QUE SE PUEDE HACER CON EL.
+                   pendiente  -> un codigo nuevo (el anterior se anula)
+                   activa     -> restablecer la clave (olvido la suya:
+                                 se le borra y queda fuera hasta activar)
+                   bloqueada  -> desbloquear (la recuerda) o restablecer
+                                 (no la recuerda)
+                 Suspendida no tiene botones todavia: reactivar es otra
+                 decision, pendiente.
+                 ====================================================== -->
+            <div class="dato ancho">
+              <dt>Estado de la cuenta</dt>
+              <dd>
+                @if (estadoCuenta(); as est) {
+                  <span class="chip" [class]="'chip ' + est.clase">{{ est.texto }}</span>
+                }
+
+                @if (nota(); as n) { <span class="nota-cuenta">{{ n }}</span> }
+
+                @if (e.estado === 'suspendido') {
+                  <span class="pista">
+                    Suspendida porque el empleado esta inactivo. Para devolverle la cuenta,
+                    activalo otra vez desde Editar.
+                  </span>
+                }
+
+                @if (puedeAdministrar() && e.estado !== 'suspendido') {
+                  @if (!puedeTocarCuenta()) {
+                    <span class="pista">Solo el propietario toca la cuenta de un administrador.</span>
+
+                  } @else {
+                    @switch (confirmando()) {
+                      @case ('codigo') {
+                        <span class="confirmar">
+                          El codigo anterior deja de servir.
+                          <button type="button" class="boton primario chico" [disabled]="trabajando()" (click)="generarCodigo()">
+                            {{ trabajando() ? 'Generando...' : 'Si, generar uno nuevo' }}
+                          </button>
+                          <button type="button" class="boton fantasma chico" (click)="confirmando.set(null)">Cancelar</button>
+                        </span>
+                      }
+                      @case ('restablecer') {
+                        <span class="confirmar fuerte">
+                          Su clave se borra y queda fuera del sistema hasta que active
+                          con el codigo nuevo. Solo si la olvido.
+                          <button type="button" class="boton primario chico" [disabled]="trabajando()" (click)="generarCodigo()">
+                            {{ trabajando() ? 'Restableciendo...' : 'Si, restablecer' }}
+                          </button>
+                          <button type="button" class="boton fantasma chico" (click)="confirmando.set(null)">Cancelar</button>
+                        </span>
+                      }
+                      @case ('desbloqueo') {
+                        <span class="confirmar">
+                          Vuelve a entrar con su clave de siempre.
+                          <button type="button" class="boton primario chico" [disabled]="trabajando()" (click)="desbloquear()">
+                            {{ trabajando() ? 'Desbloqueando...' : 'Si, desbloquear' }}
+                          </button>
+                          <button type="button" class="boton fantasma chico" (click)="confirmando.set(null)">Cancelar</button>
+                        </span>
+                      }
+                      @default {
+                        @if (e.estado === 'pendiente_activacion') {
+                          <button type="button" class="boton suave chico" (click)="pedirConfirmacion('codigo')">Generar codigo nuevo</button>
+                          <span class="pista">Si no le llego o se le vencio.</span>
+                        } @else {
+                          @if (e.estado === 'bloqueado') {
+                            <button type="button" class="boton suave chico" (click)="pedirConfirmacion('desbloqueo')">Desbloquear</button>
+                          }
+                          <button type="button" class="boton suave chico" (click)="pedirConfirmacion('restablecer')">Restablecer clave</button>
+                          <span class="pista">
+                            @if (e.estado === 'bloqueado') {
+                              Se bloqueo sola tras cinco intentos. Desbloquear si la recuerda; restablecer si no.
+                            } @else {
+                              Solo si olvido su clave: queda fuera hasta que active con el codigo.
+                            }
+                          </span>
+                        }
+                      }
+                    }
+                  }
+                }
+
+                @if (errorCuenta(); as err) { <span class="mal-campo">{{ err }}</span> }
+              </dd>
+            </div>
+          }
+          <div class="dato">
+            <dt>Registrado</dt>
+            <dd>{{ e.creadoEn | date:'d MMM y' }}</dd>
+          </div>
+        </dl>
+      </div>
+    </div>
+
+    <p class="sub" style="margin-top: 1rem">
+      La colegiacion se imprime en el informe junto a la firma del bioquimico.
+      Solo la llevan quienes firman.
+    </p>
+  }
+  }
+</div>

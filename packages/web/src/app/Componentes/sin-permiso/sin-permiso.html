@@ -1,0 +1,17 @@
+<div class="pantalla">
+  <div class="tarjeta">
+    <header>
+      <h1>No tenes acceso</h1>
+      <p>Esa pantalla no le corresponde a tu rol en esta sede.</p>
+    </header>
+
+    <p class="pista">
+      Estas como <strong>{{ sesion.rol()?.nombre }}</strong>
+      @if (sesion.sucursal()) { en <strong>{{ sesion.sucursal()?.nombre }}</strong> }.
+      Puede que el permiso si lo tengas en otra sede: los modulos que la
+      empresa contrata van por sucursal.
+    </p>
+
+    <p class="pie"><a routerLink="/inicio">Volver al inicio</a></p>
+  </div>
+</div>

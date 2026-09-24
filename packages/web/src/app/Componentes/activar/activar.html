@@ -1,0 +1,59 @@
+<div class="pantalla">
+  <form class="tarjeta" [formGroup]="formulario" (ngSubmit)="activar()" novalidate>
+    <header>
+      <h1>Activar cuenta</h1>
+      <p>Cambia el codigo que te dieron por tu propia clave</p>
+    </header>
+
+    <label>
+      <span>Usuario</span>
+      <input type="text" formControlName="username" autocomplete="username"
+             autocapitalize="off" spellcheck="false" autofocus />
+    </label>
+
+    <label>
+      <span>Codigo de activacion</span>
+      <input type="text" formControlName="codigo" placeholder="K7M2-9QXF"
+             autocapitalize="characters" spellcheck="false" autocomplete="off" />
+    </label>
+    <p class="pista">
+      No lleva las letras I, L, O ni U: se confunden con 1 y 0. Da igual
+      mayuscula o minuscula, y el guion es opcional.
+    </p>
+
+    <label>
+      <span>Tu clave nueva</span>
+      <div class="con-boton">
+        <input [type]="verClave() ? 'text' : 'password'" formControlName="claveNueva"
+               autocomplete="new-password" />
+        <button type="button" class="ver" (click)="verClave.set(!verClave())">
+          {{ verClave() ? 'ocultar' : 'ver' }}
+        </button>
+      </div>
+    </label>
+
+    <p class="pista">
+      Minimo 10 caracteres y ninguna regla mas. Una frase que te acordes
+      -- "mi perro se llama tomas" -- es mejor que "Lab2024!": mas larga,
+      mas dificil de adivinar y mas facil de recordar.
+    </p>
+
+    <label>
+      <span>Repetila</span>
+      <input type="password" formControlName="claveRepetida" autocomplete="new-password" />
+    </label>
+
+    @if (noCoinciden) {
+      <p class="error" role="alert">Las dos claves no son iguales.</p>
+    }
+    @if (error()) {
+      <p class="error" role="alert">{{ error() }}</p>
+    }
+
+    <button type="submit" class="principal" [disabled]="cargando()">
+      {{ cargando() ? 'Activando...' : 'Activar y entrar' }}
+    </button>
+
+    <p class="pie">Ya tenes clave? <a routerLink="/login">Entrar</a></p>
+  </form>
+</div>

@@ -1,0 +1,62 @@
+<div class="marco">
+  <app-encabezado />
+
+  <main>
+    <h1>Hola {{ sesion.persona()?.nombre ?? sesion.usuario()?.username }}</h1>
+    <p class="ultimo">
+      @if (sesion.usuario()?.ultimoAccesoEn; as ultimo) {
+        Tu ingreso anterior fue el {{ ultimo | date:'d MMM y, HH:mm' }}.
+        Si no fuiste vos, avisale al administrador.
+      } @else {
+        Es la primera vez que entras.
+      }
+    </p>
+
+    <div class="rejilla">
+      <section>
+        <h2>Quien sos</h2>
+        <dl>
+          <dt>Usuario</dt>      <dd>{{ sesion.usuario()?.username }}</dd>
+          <dt>Cargo</dt>        <dd>{{ sesion.persona()?.cargo ?? '—' }}</dd>
+          <dt>Correo</dt>       <dd>{{ sesion.persona()?.correo ?? '—' }}</dd>
+          <dt>Colegiacion</dt>  <dd>{{ sesion.persona()?.colegiacion ?? '—' }}</dd>
+          <dt>Rol</dt>          <dd>{{ sesion.rol()?.nombre }}</dd>
+        </dl>
+      </section>
+
+      <section>
+        <h2>La empresa</h2>
+        <dl>
+          <dt>Nombre legal</dt>  <dd>{{ sesion.empresa()?.nombre }}</dd>
+          <dt>Nivel de acceso</dt><dd>{{ sesion.empresa()?.nivelAcceso }}</dd>
+          <dt>Cierre</dt>        <dd>{{ sesion.empresa()?.fechaCierre ?? 'sin fecha' }}</dd>
+          <dt>Sedes tuyas</dt>   <dd>{{ sesion.sucursales().length }}</dd>
+        </dl>
+      </section>
+
+      <section>
+        <h2>Modulos encendidos aqui</h2>
+        <ul class="etiquetas">
+          @for (m of sesion.modulos(); track m) { <li>{{ m }}</li> }
+          @empty { <li class="vacio">ninguno</li> }
+        </ul>
+      </section>
+
+      <section class="ancha">
+        <h2>
+          Lo que podes hacer en esta sede
+          <span class="cuenta">{{ sesion.permisos().length }}</span>
+        </h2>
+        <p class="nota">
+          Es el rol intersecado con los modulos que la empresa paga AQUI. En
+          otra sede la lista puede ser distinta. Y esto solo decide que se
+          dibuja: quien de verdad autoriza es el servidor.
+        </p>
+        <ul class="etiquetas">
+          @for (p of sesion.permisos(); track p) { <li>{{ p }}</li> }
+          @empty { <li class="vacio">ninguno</li> }
+        </ul>
+      </section>
+    </div>
+  </main>
+</div>

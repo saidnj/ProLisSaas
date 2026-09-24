@@ -1,0 +1,28 @@
+// =====================================================================
+//  ESTILOS GLOBALES. Es el unico archivo que angular.json compila a CSS
+//  global; todo lo compartido entra por aqui, UNA sola vez, y le aplica
+//  a toda la app sin que ningun componente tenga que importar nada.
+//
+//  Cada pieza vive en su parcial en estilos/ (un @use por pieza). El
+//  .scss de cada componente lleva SOLO lo suyo -- lo que ninguna otra
+//  pantalla va a usar -- y NO hace @use de estos parciales: un @use desde
+//  un componente mete una copia entera del parcial en ese componente.
+//
+//  Como se arma una pantalla con estas piezas: estilos/LEEME.md.
+//
+//  El orden importa: el tema de ng-select primero (la libreria), y las
+//  variables antes que todo lo que las usa.
+// =====================================================================
+
+@use '@ng-select/ng-select/themes/default.theme.css';
+
+@use 'estilos/variables';   // :root { --tinta, --acento, ... }
+@use 'estilos/base';        // reset, body
+@use 'estilos/botones';     // .boton .primario/.suave/.fantasma/.chico
+@use 'estilos/pantalla';    // .pagina .migas .cabecera .panel .buscador
+@use 'estilos/tabla';       // .tabla-envoltura table.tabla
+@use 'estilos/formulario';  // .campos label.campo label.interruptor .mal-campo .pie-formulario
+@use 'estilos/detalle';     // dl.datos .dato
+@use 'estilos/chips';       // .chip .estado .error-caja .aviso-demo .cargando
+@use 'estilos/tarjeta';     // .pantalla .tarjeta (login, activar, elegir sucursal, sin permiso)
+@use 'estilos/ng-select';   // el desplegable con buscador, con la cara del sistema

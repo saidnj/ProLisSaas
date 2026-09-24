@@ -1,0 +1,25 @@
+// =====================================================================
+//  LA FICHA DE SOLO LECTURA: una lista de definiciones en rejilla.
+//
+//    <dl class="datos">
+//      <div class="dato"><dt>Telefono</dt><dd>9933-4455</dd></div>
+//      <div class="dato"><dt>Correo</dt><dd class="vacio">--</dd></div>
+//      <div class="dato ancho"> ...ocupa toda la fila... </div>
+//    </dl>
+// =====================================================================
+
+.datos {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(14rem, 1fr));
+  gap: 1.25rem 2rem;
+
+  .dato {
+    display: flex;
+    flex-direction: column;
+    gap: 0.2rem;
+
+    dt { font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.05em; color: var(--suave); }
+    dd { margin: 0; font-size: 0.95rem; overflow-wrap: anywhere; }
+    dd.vacio { color: var(--tenue); }
+  }
+}

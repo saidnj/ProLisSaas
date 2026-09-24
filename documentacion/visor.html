@@ -1,0 +1,406 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ProLisSaas · Documentación</title>
+<style>
+:root{
+  --bg:#EEF1F4; --surface:#FFFFFF; --surface-2:#F7F9FA;
+  --ink:#0F1820; --ink-2:#3C4A56; --muted:#66757F;
+  --line:#D8DFE5; --line-2:#C3CCD4;
+  --accent:#10466E; --accent-soft:#E3ECF3;
+  --ok:#2F7358; --pend:#9A742A; --bad:#A63D3D; --abierto:#3F7EA6;
+  --tint:#EAF0F4;
+  --mono:"IBM Plex Mono",ui-monospace,SFMono-Regular,Consolas,Menlo,monospace;
+  --sans:"Segoe UI",system-ui,-apple-system,sans-serif;
+}
+@media (prefers-color-scheme: dark){
+  :root{
+    --bg:#0C1116; --surface:#141C22; --surface-2:#111920;
+    --ink:#E4EBF1; --ink-2:#B7C4CE; --muted:#8C9AA6;
+    --line:#25313A; --line-2:#31404B;
+    --accent:#63A2D4; --accent-soft:#16283A;
+    --ok:#5A9E80; --pend:#C0994F; --bad:#C96A6A; --abierto:#6BA6C9;
+    --tint:#182229;
+  }
+}
+*{box-sizing:border-box}
+html,body{height:100%}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--sans);
+  font-size:15.5px;line-height:1.62;-webkit-font-smoothing:antialiased;}
+
+/* ---------- layout ---------- */
+.app{display:grid;grid-template-columns:274px minmax(0,1fr);height:100vh;}
+/* En ventana angosta la lista se pone arriba, no se esconde. Antes era
+   `display:none` y no quedaba ninguna forma de cambiar de documento. */
+@media (max-width:900px){
+  .app{grid-template-columns:1fr;grid-template-rows:auto minmax(0,1fr);}
+  .side{border-right:none;border-bottom:1px solid var(--line);max-height:44vh;padding-bottom:12px;}
+}
+
+/* ---------- sidebar ---------- */
+.side{background:var(--surface);border-right:1px solid var(--line);overflow-y:auto;padding:0 0 40px;}
+.side header{padding:22px 20px 16px;border-bottom:1px solid var(--line);position:sticky;top:0;background:var(--surface);z-index:2;}
+.side h1{margin:0 0 3px;font-size:15px;font-weight:600;letter-spacing:-.01em;}
+.side .sub{margin:0;font-family:var(--mono);font-size:10.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);}
+.side .estado{margin-top:12px;display:flex;align-items:center;gap:8px;font-family:var(--mono);font-size:10.5px;color:var(--muted);}
+.dot{width:7px;height:7px;border-radius:50%;background:var(--ok);flex:0 0 auto;}
+.dot.off{background:var(--bad)}
+.grupo{font-family:var(--mono);font-size:9.5px;letter-spacing:.14em;text-transform:uppercase;color:var(--muted);padding:20px 20px 7px;}
+.side nav a{display:grid;grid-template-columns:1fr auto;gap:8px;align-items:center;
+  text-decoration:none;color:var(--ink-2);font-size:13.4px;padding:6px 20px 6px 18px;
+  border-left:2px solid transparent;line-height:1.35;}
+.side nav a:hover{color:var(--accent);background:var(--surface-2);}
+.side nav a.on{color:var(--accent);border-left-color:var(--accent);background:var(--accent-soft);font-weight:600;}
+.pct{font-family:var(--mono);font-size:10px;color:var(--muted);white-space:nowrap;}
+.pct.full{color:var(--ok)}
+.pct.zero{color:var(--pend)}
+.barra{grid-column:1/-1;height:2px;background:var(--line);border-radius:2px;overflow:hidden;margin-top:4px;}
+.barra i{display:block;height:100%;background:var(--accent);}
+
+/* ---------- main ---------- */
+main{overflow-y:auto;padding:0 0 100px;}
+.doc{max-width:860px;margin:0 auto;padding:44px 40px 0;}
+@media (max-width:640px){.doc{padding:28px 20px 0}}
+.aviso{max-width:760px;margin:60px auto;background:var(--surface);border:1px solid var(--line);
+  border-left:3px solid var(--bad);border-radius:3px;padding:24px 28px;}
+.aviso h2{margin:0 0 10px;font-size:19px;}
+.aviso code{display:block;background:var(--tint);padding:10px 14px;border-radius:3px;margin:12px 0;font-family:var(--mono);font-size:13px;}
+
+/* ---------- markdown ---------- */
+.md h1{font-size:32px;font-weight:600;letter-spacing:-.02em;line-height:1.15;margin:0 0 6px;}
+.md .lead{color:var(--muted);font-family:var(--mono);font-size:11px;letter-spacing:.1em;text-transform:uppercase;margin:0 0 28px;}
+.md h2{font-size:20px;font-weight:600;letter-spacing:-.01em;margin:44px 0 12px;padding-bottom:8px;border-bottom:1px solid var(--line);}
+.md h3{font-size:16px;font-weight:600;margin:30px 0 8px;}
+.md h4{font-size:13px;font-weight:600;margin:22px 0 6px;color:var(--ink-2);font-family:var(--mono);letter-spacing:.02em;}
+.md p{margin:0 0 14px;}
+.md ul,.md ol{margin:0 0 14px;padding-left:24px;}
+.md li{margin:0 0 5px;}
+.md li>ul,.md li>ol{margin-top:5px;}
+.md code{font-family:var(--mono);font-size:.87em;background:var(--tint);padding:1.5px 5px;border-radius:2px;}
+.md pre{background:var(--surface);border:1px solid var(--line);border-left:2px solid var(--accent);
+  border-radius:3px;padding:14px 16px;overflow-x:auto;margin:14px 0;}
+.md pre code{background:none;padding:0;font-size:12.4px;line-height:1.65;}
+.md blockquote{margin:14px 0;padding:12px 16px;background:var(--surface);border-left:2px solid var(--line-2);
+  border-radius:0 3px 3px 0;color:var(--ink-2);}
+.md blockquote p:last-child{margin:0}
+.md blockquote.pendiente{border-left-color:var(--pend);background:var(--surface-2);}
+.md blockquote.pendiente strong:first-child{color:var(--pend);font-family:var(--mono);font-size:10.5px;letter-spacing:.1em;}
+.md blockquote.abierto{border-left-color:var(--abierto);}
+.md blockquote.abierto strong:first-child{color:var(--abierto);font-family:var(--mono);font-size:10.5px;letter-spacing:.1em;}
+.md blockquote.riesgo{border-left-color:var(--bad);}
+.md blockquote.riesgo strong:first-child{color:var(--bad);font-family:var(--mono);font-size:10.5px;letter-spacing:.1em;}
+.md blockquote.regla{border-left-color:var(--ok);}
+.md blockquote.regla strong:first-child{color:var(--ok);font-family:var(--mono);font-size:10.5px;letter-spacing:.1em;}
+.md hr{border:none;border-top:1px solid var(--line);margin:32px 0;}
+.md a{color:var(--accent);}
+.md table{border-collapse:collapse;width:100%;font-size:13.4px;margin:14px 0;}
+.md .tw{overflow-x:auto;border:1px solid var(--line);border-radius:3px;background:var(--surface);margin:14px 0;}
+.md .tw table{margin:0;}
+.md th{text-align:left;font-family:var(--mono);font-size:9.5px;letter-spacing:.12em;text-transform:uppercase;
+  color:var(--muted);font-weight:500;padding:11px 14px;border-bottom:1px solid var(--line-2);background:var(--surface-2);}
+.md td{padding:9px 14px;border-bottom:1px solid var(--line);vertical-align:top;color:var(--ink-2);line-height:1.5;}
+.md tr:last-child td{border-bottom:none;}
+.md td:first-child{color:var(--ink);}
+.md strong{font-weight:600;color:var(--ink);}
+</style>
+</head>
+<body>
+<div class="app">
+  <aside class="side">
+    <header>
+      <h1>ProLisSaas</h1>
+      <p class="sub">Documentación de flujos</p>
+      <div class="estado"><span class="dot" id="dot"></span><span id="estado">conectando…</span></div>
+    </header>
+    <nav id="nav"></nav>
+  </aside>
+  <main><div id="cont"></div></main>
+</div>
+
+<script>
+/* =====================================================================
+   Visor de documentación · sin dependencias externas
+   Relee los .md cada 2 segundos y repinta cuando cambian.
+   ===================================================================== */
+
+const CADA_MS = 2000;
+const cache = new Map();          // ruta -> texto
+let indice = null;
+let actual = null;
+
+/* ---------------- markdown mínimo ---------------- */
+function esc(s){return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
+
+function inline(s){
+  s = esc(s);
+  s = s.replace(/`([^`]+)`/g,'<code>$1</code>');
+  s = s.replace(/\*\*([^*]+)\*\*/g,'<strong>$1</strong>');
+  s = s.replace(/(^|[^*])\*([^*]+)\*/g,'$1<em>$2</em>');
+  s = s.replace(/\[([^\]]+)\]\(([^)]+)\)/g,'<a href="$2" target="_blank" rel="noopener">$1</a>');
+  return s;
+}
+
+function claseCita(txt){
+  if(/^\*\*PENDIENTE\*\*/.test(txt))  return 'pendiente';
+  if(/^\*\*ABIERTO\*\*/.test(txt))    return 'abierto';
+  if(/^\*\*RIESGO\*\*/.test(txt))     return 'riesgo';
+  if(/^\*\*REGLA\*\*/.test(txt))      return 'regla';
+  return '';
+}
+
+function md(src){
+  const L = src.replace(/\r\n/g,'\n').split('\n');
+  let out = '', i = 0;
+
+  const cerrarListas = (pila) => { while(pila.length) out += pila.pop(); };
+
+  while(i < L.length){
+    let l = L[i];
+
+    // fenced code
+    if(/^```/.test(l)){
+      const lang = l.slice(3).trim();
+      let buf = []; i++;
+      while(i < L.length && !/^```/.test(L[i])){ buf.push(L[i]); i++; }
+      i++;
+      out += '<pre><code data-lang="'+esc(lang)+'">'+esc(buf.join('\n'))+'</code></pre>';
+      continue;
+    }
+
+    // tabla
+    if(/^\s*\|/.test(l) && i+1 < L.length && /^\s*\|[\s:|-]+\|\s*$/.test(L[i+1])){
+      const fila = (s)=> s.trim().replace(/^\||\|$/g,'').split('|').map(c=>c.trim());
+      const cab = fila(l); i += 2;
+      let t = '<div class="tw"><table><thead><tr>'+cab.map(c=>'<th>'+inline(c)+'</th>').join('')+'</tr></thead><tbody>';
+      while(i < L.length){
+        if(/^\s*\|/.test(L[i])){
+          t += '<tr>'+fila(L[i]).map(c=>'<td>'+inline(c)+'</td>').join('')+'</tr>'; i++; continue;
+        }
+        // Un renglon en blanco no termina la tabla si despues siguen viniendo
+        // filas: se salta. Una tabla larga partida por un renglon suelto se
+        // sigue viendo como una sola, que es lo que quiso quien la escribio.
+        if(!L[i].trim()){
+          let j = i+1;
+          while(j < L.length && !L[j].trim()) j++;
+          // …salvo que lo que sigue sea el encabezado de OTRA tabla, que se
+          // reconoce porque abajo trae su renglon de guiones. Esa si empieza
+          // de nuevo.
+          const otra = j+1 < L.length && /^\s*\|[\s:|-]+\|\s*$/.test(L[j+1]);
+          if(j < L.length && /^\s*\|/.test(L[j]) && !otra){ i = j; continue; }
+        }
+        break;
+      }
+      out += t+'</tbody></table></div>';
+      continue;
+    }
+
+    // blockquote (puede abarcar varias líneas)
+    if(/^>\s?/.test(l)){
+      let buf = [];
+      while(i < L.length && /^>\s?/.test(L[i])){ buf.push(L[i].replace(/^>\s?/,'')); i++; }
+      const txt = buf.join('\n');
+      const cls = claseCita(txt);
+      out += '<blockquote'+(cls?' class="'+cls+'"':'')+'>'
+           + txt.split(/\n{2,}/).map(p=>'<p>'+inline(p.replace(/\n/g,' '))+'</p>').join('')
+           + '</blockquote>';
+      continue;
+    }
+
+    // encabezados
+    let m = /^(#{1,4})\s+(.*)$/.exec(l);
+    if(m){
+      const n = m[1].length;
+      const id = m[2].toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g,'')
+                     .replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'');
+      out += '<h'+n+' id="'+id+'">'+inline(m[2])+'</h'+n+'>';
+      i++; continue;
+    }
+
+    // regla horizontal
+    if(/^---+\s*$/.test(l)){ out += '<hr>'; i++; continue; }
+
+    // listas
+    if(/^(\s*)([-*]|\d+\.)\s+/.test(l)){
+      const pila = [];        // etiquetas de cierre
+      const nivel = [];       // sangrías
+      while(i < L.length && /^(\s*)([-*]|\d+\.)\s+/.test(L[i])){
+        const mm = /^(\s*)([-*]|\d+\.)\s+(.*)$/.exec(L[i]);
+        const ind = mm[1].length, ord = /\d/.test(mm[2]);
+        if(!nivel.length || ind > nivel[nivel.length-1]){
+          nivel.push(ind); pila.push(ord?'</ol>':'</ul>'); out += ord?'<ol>':'<ul>';
+        } else {
+          while(nivel.length > 1 && ind < nivel[nivel.length-1]){ nivel.pop(); out += pila.pop(); }
+        }
+        out += '<li>'+inline(mm[3])+'</li>';
+        i++;
+      }
+      cerrarListas(pila);
+      continue;
+    }
+
+    // línea en blanco
+    if(!l.trim()){ i++; continue; }
+
+    // párrafo
+    let buf = [];
+    while(i < L.length && L[i].trim() && !/^(#{1,4}\s|>|```|---+\s*$|\s*\|)/.test(L[i])
+          && !/^(\s*)([-*]|\d+\.)\s+/.test(L[i])){ buf.push(L[i]); i++; }
+    if(buf.length){ out += '<p>'+inline(buf.join(' '))+'</p>'; continue; }
+
+    // Red de seguridad: nadie consumio esta linea.
+    //
+    // Pasa cuando una linea *parece* el arranque de un bloque y no lo es --una
+    // fila de tabla suelta, por ejemplo--: el parrafo la rechaza, `buf` queda
+    // vacio, `i` no avanza y el `while` de arriba gira para siempre. El
+    // navegador no puede repintar ni atender clics: la pestaña se congela y lo
+    // unico que se puede hacer es cerrarla.
+    //
+    // La regla es que ninguna vuelta puede terminar sin mover `i`. Esto lo
+    // garantiza pase lo que pase: se pinta la linea tal cual y se sigue. El
+    // visor puede mostrar algo feo; colgarse ya no puede.
+    out += '<p>'+inline(l)+'</p>';
+    i++;
+  }
+  return out;
+}
+
+/* ---------------- progreso ---------------- */
+function progreso(txt){
+  // Una seccion cuenta como pendiente solo si su PRIMER contenido es una cita
+  // PENDIENTE. Asi una seccion escrita que ademas tiene preguntas abiertas no
+  // se castiga, y los ejemplos de la guia no cuentan como huecos.
+  const L = txt.replace(/\r\n/g,'\n').split('\n');
+  let secciones = 0, pend = 0;
+  for(let i = 0; i < L.length; i++){
+    if(!/^##\s+/.test(L[i])) continue;
+    secciones++;
+    let j = i + 1;
+    while(j < L.length && !L[j].trim()) j++;
+    if(j < L.length && /^>\s*\*\*PENDIENTE\*\*/.test(L[j])) pend++;
+  }
+  if(!secciones) return {pct:0, secciones:0, pend:0};
+  return {pct: Math.round((secciones-pend)/secciones*100), secciones, pend};
+}
+
+/* ---------------- red ---------------- */
+async function traer(ruta){
+  // Con corte a los tres segundos. http.server de Python atiende una peticion
+  // a la vez: si una se atasca -- OneDrive materializando un archivo, por
+  // ejemplo -- sin este limite la pagina se queda en "conectando..." para
+  // siempre y sin decir por que.
+  const ctrl = new AbortController();
+  const corte = setTimeout(()=>ctrl.abort(), 3000);
+  try{
+    const r = await fetch(ruta + '?t=' + Date.now(), {cache:'no-store', signal: ctrl.signal});
+    if(!r.ok) throw new Error(r.status + ' ' + ruta);
+    return await r.text();
+  } finally { clearTimeout(corte); }
+}
+
+function marcarEstado(ok, msg){
+  document.getElementById('dot').className = 'dot' + (ok?'':' off');
+  document.getElementById('estado').textContent = msg;
+}
+
+/* ---------------- pintado ---------------- */
+function pintarNav(){
+  const nav = document.getElementById('nav');
+  let html = '';
+  for(const g of indice.grupos){
+    html += '<div class="grupo">'+esc(g.nombre)+'</div>';
+    for(const d of g.docs){
+      const t = cache.get(d.ruta) || '';
+      const p = progreso(t);
+      const cls = p.pct===100 ? 'full' : (p.pct===0 ? 'zero' : '');
+      html += '<a href="#'+encodeURIComponent(d.ruta)+'" data-ruta="'+esc(d.ruta)+'"'
+            + (actual===d.ruta?' class="on"':'') + '>'
+            + '<span>'+esc(d.titulo)+'</span>'
+            + '<span class="pct '+cls+'">'+p.pct+'%</span>'
+            + '<span class="barra"><i style="width:'+p.pct+'%"></i></span>'
+            + '</a>';
+    }
+  }
+  nav.innerHTML = html;
+}
+
+function pintarDoc(){
+  const cont = document.getElementById('cont');
+  const txt = cache.get(actual);
+  if(txt === undefined){ cont.innerHTML = ''; return; }
+  const p = progreso(txt);
+  cont.innerHTML = '<div class="doc md">'
+    + '<p class="lead">'+esc(actual)+' · '+p.pct+'% · '+p.pend+' sin escribir</p>'
+    + md(txt) + '</div>';
+}
+
+function irA(ruta){
+  actual = ruta;
+  pintarNav();
+  pintarDoc();
+  document.querySelector('main').scrollTop = 0;
+}
+
+/* ---------------- ciclo ---------------- */
+async function refrescar(primera){
+  try{
+    const idx = JSON.parse(await traer('indice.json'));
+    const cambioIndice = JSON.stringify(idx) !== JSON.stringify(indice);
+    indice = idx;
+
+    let cambio = cambioIndice;
+    const rutas = indice.grupos.flatMap(g=>g.docs.map(d=>d.ruta));
+    await Promise.all(rutas.map(async r=>{
+      try{
+        const t = await traer(r);
+        if(cache.get(r) !== t){ cache.set(r, t); cambio = true; }
+      }catch(e){ /* archivo que aun no existe */ }
+    }));
+
+    if(primera && !actual) actual = decodeURIComponent(location.hash.slice(1)) || rutas[0];
+    if(cambio || primera){ pintarNav(); pintarDoc(); }
+
+    const total = rutas.reduce((a,r)=>{
+      const p = progreso(cache.get(r)||''); return {s:a.s+p.secciones, p:a.p+p.pend};
+    }, {s:0,p:0});
+    const pct = total.s ? Math.round((total.s-total.p)/total.s*100) : 0;
+    marcarEstado(true, 'al día · '+pct+'% del total');
+  }catch(e){
+    if(primera){
+      document.getElementById('cont').innerHTML =
+        '<div class="aviso"><h2>Abre esto con <code>abrir-visor.bat</code></h2>'
+        + '<p>El navegador no puede leer archivos del disco directamente por seguridad, '
+        + 'así que este visor necesita un servidor local. Cierra esta pestaña y haz doble clic en '
+        + '<strong>abrir-visor.bat</strong>, en esta misma carpeta.</p>'
+        + '<p>Si prefieres hacerlo a mano, abre una consola aquí y ejecuta:</p>'
+        + '<code>py -m http.server 8099</code>'
+        + '<p>y luego entra a <a href="http://localhost:8099/visor.html">localhost:8099/visor.html</a>.</p></div>';
+    }
+    marcarEstado(false, 'sin conexión al disco');
+  }
+}
+
+document.addEventListener('click', e=>{
+  const a = e.target.closest('a[data-ruta]');
+  if(!a) return;
+  e.preventDefault();
+  // Mover `location.hash` deja huella en el historial y dispara `hashchange`,
+  // que es quien pinta. Con `replaceState` no quedaba huella: el boton de
+  // atras del navegador no volvia al documento anterior, se salia de la
+  // pagina. Si ya estamos en ese documento, se repinta a mano porque
+  // `hashchange` no llega cuando el hash no cambia.
+  const h = '#'+encodeURIComponent(a.dataset.ruta);
+  if(location.hash === h) irA(a.dataset.ruta);
+  else location.hash = h;
+});
+window.addEventListener('hashchange', ()=>{
+  const r = decodeURIComponent(location.hash.slice(1));
+  if(r && r !== actual) irA(r);
+});
+
+refrescar(true);
+const CICLO = setInterval(()=>refrescar(false), CADA_MS);
+</script>
+</body>
+</html>

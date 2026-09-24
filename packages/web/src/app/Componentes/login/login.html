@@ -1,0 +1,37 @@
+<div class="pantalla">
+  <form class="tarjeta" [formGroup]="formulario" (ngSubmit)="entrar()" novalidate>
+    <header>
+      <h1>ProLisSaas</h1>
+      <p>Sistema de informacion de laboratorio</p>
+    </header>
+
+    <label>
+      <span>Usuario</span>
+      <input type="text" formControlName="username" autocomplete="username"
+             autocapitalize="off" spellcheck="false" autofocus />
+    </label>
+
+    <label>
+      <span>Clave</span>
+      <div class="con-boton">
+        <input [type]="verClave() ? 'text' : 'password'" formControlName="password"
+               autocomplete="current-password" />
+        <button type="button" class="ver" (click)="verClave.set(!verClave())">
+          {{ verClave() ? 'ocultar' : 'ver' }}
+        </button>
+      </div>
+    </label>
+
+    @if (error()) {
+      <p class="error" role="alert">{{ error() }}</p>
+    }
+
+    <button type="submit" class="principal" [disabled]="cargando()">
+      {{ cargando() ? 'Entrando...' : 'Entrar' }}
+    </button>
+
+    <p class="pie">
+      Primera vez? <a routerLink="/activar">Activa tu cuenta con el codigo</a>
+    </p>
+  </form>
+</div>

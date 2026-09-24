@@ -1,0 +1,37 @@
+// Lo propio de esta pantalla: la lista de sedes para elegir. La tarjeta,
+// el titulo y el error vienen de los estilos globales (estilos/_tarjeta).
+
+// Una sede de la lista.
+.sede {
+  display: flex;
+  align-items: center;
+  gap: 0.9rem;
+  width: 100%;
+  text-align: left;
+  padding: 0.9rem 1rem;
+  border: 1px solid var(--borde);
+  border-radius: 10px;
+  background: #fff;
+  font-family: inherit;
+  font-size: 1rem;
+  color: inherit;
+  cursor: pointer;
+
+  &:hover:not(:disabled) { border-color: var(--acento); background: #f8faff; }
+  &:disabled { opacity: 0.6; cursor: default; }
+
+  .codigo {
+    flex: 0 0 auto;
+    font-weight: 700;
+    font-size: 0.8rem;
+    letter-spacing: 0.04em;
+    padding: 0.3rem 0.5rem;
+    border-radius: 6px;
+    background: #eef2ff;
+    color: var(--acento);
+  }
+
+  .texto { display: flex; flex-direction: column; gap: 0.15rem; }
+  .nombre { font-weight: 600; }
+  .detalle { font-size: 0.8rem; color: var(--suave); }
+}

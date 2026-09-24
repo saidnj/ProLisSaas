@@ -1,0 +1,43 @@
+// Solo lo propio de esta pantalla. Lo compartido (pagina, panel, campos, botones, chips) es global: src/styles.scss.
+// El estado de la cuenta ocupa la fila entera: lleva chip, botones y sus
+// avisos, y apretado en una columna se parte mal.
+.datos .dato.ancho {
+  grid-column: 1 / -1;
+
+  dd {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 0.5rem 0.75rem;
+  }
+}
+
+// La confirmacion en linea: la pregunta y sus dos botones, juntos.
+.confirmar {
+  display: inline-flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  padding: 0.35rem 0.6rem;
+  border-radius: 8px;
+  background: #fffaeb;
+  border: 1px solid #fedf89;
+  color: #93370d;
+  font-size: 0.85rem;
+}
+
+// La de restablecer es mas grave (deja a alguien fuera): rojo, no ambar.
+.confirmar.fuerte {
+  background: #fef3f2;
+  border-color: #fecdca;
+  color: var(--peligro);
+}
+
+.nota-cuenta {
+  color: var(--bien);
+  font-size: 0.85rem;
+  font-weight: 600;
+}
+
+.pista { color: var(--suave); font-size: 0.8rem; }
+.mal-campo { flex-basis: 100%; }

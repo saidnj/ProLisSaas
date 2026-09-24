@@ -1,0 +1,16 @@
+// =====================================================================
+//  El reset del navegador y el cuerpo de la pagina. Lo minimo: que todo
+//  mida con box-sizing, y que la pagina entera tenga el fondo, la tinta y
+//  la letra del sistema sin que cada componente lo repita.
+// =====================================================================
+
+*, *::before, *::after { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  min-height: 100dvh;
+  background: var(--fondo);
+  color: var(--tinta);
+  font-family: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  -webkit-font-smoothing: antialiased;
+}

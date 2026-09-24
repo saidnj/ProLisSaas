@@ -1,0 +1,174 @@
+<app-encabezado />
+
+<div class="pagina">
+
+  <div class="migas">
+    <a routerLink="/roles">Roles</a> <span>/</span>
+    <span>{{ titulo() }}</span>
+  </div>
+
+  <div class="cabecera">
+    <div>
+      <h1>{{ titulo() }}</h1>
+      <p class="sub">
+        @if (editando) {
+          Cambiar el nombre, la descripcion y los permisos. Los cambios les llegan a
+          todos los que tienen este rol en cuanto vuelvan a entrar.
+        } @else {
+          Un nombre y los permisos que va a tener. Se crea con sus permisos de una
+          vez: si algo no pasa, no queda nada a medias.
+        }
+      </p>
+    </div>
+  </div>
+
+  @if (cargando()) {
+    <p class="cargando">Cargando...</p>
+
+  } @else if (bloqueado(); as motivo) {
+    <!-- No se puede editar ESTE rol (fijo, el propio, o de administrador
+         sin ser el propietario). Se dice, y no se dibuja el formulario. -->
+    <div class="panel">
+      <div class="estado">
+        <strong>{{ rol()?.nombre }} no se edita desde aqui</strong>
+        <p>{{ motivo }}</p>
+        <a class="boton suave" [routerLink]="['/roles', id]">Ver el rol</a>
+      </div>
+    </div>
+
+  } @else {
+
+    @if (error()) {
+      <p class="error-caja" role="alert">{{ error() }}</p>
+    }
+
+    <form class="panel" [formGroup]="formulario" (ngSubmit)="guardar()" novalidate>
+      <div class="cuerpo">
+        <div class="campos">
+
+          <label class="campo">
+            <span>Nombre *</span>
+            <span class="pista">Corto y claro: "Recepcion", "Analista de turno". No se repite en la empresa.</span>
+            <input type="text" formControlName="nombre" [class.malo]="malo('nombre') || enUso().has('nombre')"
+                   autocomplete="off" maxlength="60" autofocus />
+            @if (malo('nombre')) { <span class="mal-campo">Hace falta el nombre (al menos 2 caracteres)</span> }
+            @if (enUso().has('nombre')) { <span class="mal-campo">Ya hay un rol con ese nombre</span> }
+          </label>
+
+          <label class="campo">
+            <span>Descripcion *</span>
+            <span class="pista">Para quien lo va a asignar: a quien se le pone y que hace.</span>
+            <input type="text" formControlName="descripcion" [class.malo]="malo('descripcion')"
+                   autocomplete="off" maxlength="200" />
+            @if (malo('descripcion')) { <span class="mal-campo">Hace falta la descripcion</span> }
+          </label>
+
+          @if (editando) {
+            <div class="ancho-total">
+              <!-- Apagar un rol lo saca del catalogo: ya no se asigna. Con gente
+                   adentro no se puede: primero se les cambia el rol. -->
+              <label class="interruptor" [class.bloqueado]="formulario.controls.activo.disabled">
+                <input type="checkbox" formControlName="activo" />
+                <span>
+                  Activo
+                  <span class="pista">
+                    — apagado, ya no se le asigna a nadie. No lo borra: aqui nada se borra.
+                  </span>
+                </span>
+              </label>
+              @if (formulario.controls.activo.disabled) {
+                <span class="pista bloqueado">
+                  No se puede apagar: {{ rol()!.cuantosEmpleados === 1 ? 'hay 1 empleado' : 'hay ' + rol()!.cuantosEmpleados + ' empleados' }}
+                  con este rol. Cambiales el rol primero.
+                </span>
+              }
+            </div>
+
+            @if (seApaga()) {
+              <label class="campo ancho-total motivo">
+                <span>Por que se apaga</span>
+                <span class="pista">Opcional. Queda en la bitacora junto al cambio.</span>
+                <input type="text" formControlName="motivo" autocomplete="off" maxlength="200" />
+              </label>
+            }
+          }
+        </div>
+
+        <!-- ============================================================
+             LOS PERMISOS, POR MODULO. Cada uno con su casilla; los que la
+             base no va a aceptar salen grises con el motivo.
+             ============================================================ -->
+        <div class="seccion-permisos" [class.malo]="intentado() && faltanPermisos()">
+          <h2 class="titulo-permisos">
+            Permisos *
+            <span class="pista">
+              Lo que va a poder hacer quien tenga este rol. Marca al menos uno.
+              @if (marcados().size > 0) { Marcados: {{ marcados().size }}. }
+            </span>
+          </h2>
+
+          @if (intentado() && faltanPermisos()) {
+            <span class="mal-campo">Marca al menos un permiso</span>
+          }
+
+          @if (quedaAdmin()) {
+            <p class="aviso-admin">
+              Con un permiso de administracion marcado, este pasa a ser un <strong>rol de
+              administrador</strong>: solo el propietario lo asigna, lo edita y lo quita.
+            </p>
+          }
+
+          @for (m of modulos(); track m.id) {
+            <div class="modulo">
+              <div class="cabecera-modulo">
+                <strong>{{ m.nombre }}</strong>
+                <span class="pista">{{ marcadosDe(m) }} de {{ m.permisos.length }}</span>
+                <span class="atajos">
+                  <button type="button" class="boton fantasma chico" (click)="marcarModulo(m, true)">Todos</button>
+                  <button type="button" class="boton fantasma chico" (click)="marcarModulo(m, false)">Ninguno</button>
+                </span>
+              </div>
+
+              <div class="permisos">
+                @for (p of m.permisos; track p.id) {
+                  <label class="permiso"
+                         [class.marcado]="marcados().has(p.id)"
+                         [class.bloqueado]="vetado(p) !== null"
+                         [class.admin]="p.nivel === 'admin'">
+                    <input type="checkbox"
+                           [checked]="marcados().has(p.id)"
+                           [disabled]="vetado(p) !== null"
+                           (change)="alternar(p)" />
+                    <span class="texto">
+                      <span class="descripcion">{{ p.descripcion }}</span>
+                      @if (vetado(p); as v) {
+                        <span class="motivo-veto">{{ v }}</span>
+                      } @else if (p.nivel === 'admin') {
+                        <span class="motivo-veto">De administracion: vuelve al rol "de administrador"</span>
+                      }
+                    </span>
+                  </label>
+                }
+              </div>
+            </div>
+          }
+
+          @if (fueraDelCatalogo() > 0) {
+            <p class="aviso-admin">
+              Este rol tiene {{ fueraDelCatalogo() }} {{ fueraDelCatalogo() === 1 ? 'permiso' : 'permisos' }}
+              de un modulo que la empresa ya no tiene contratado: se
+              {{ fueraDelCatalogo() === 1 ? 'va a quitar' : 'van a quitar' }} al guardar.
+            </p>
+          }
+        </div>
+
+        <div class="pie-formulario">
+          <a class="boton fantasma" routerLink="/roles">Cancelar</a>
+          <button type="submit" class="boton primario" [disabled]="guardando()">
+            {{ guardando() ? 'Guardando...' : (editando ? 'Guardar' : 'Crear rol') }}
+          </button>
+        </div>
+      </div>
+    </form>
+  }
+</div>

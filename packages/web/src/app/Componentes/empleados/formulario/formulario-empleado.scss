@@ -1,0 +1,148 @@
+// Solo lo propio de esta pantalla. Lo compartido (pagina, panel, campos, botones, chips) es global: src/styles.scss.
+// La seccion de la cuenta: separada del resto para que se lea como lo que
+// es -- con esto entra al sistema -- pero siempre presente: todo empleado
+// tiene cuenta.
+.seccion-cuenta {
+  margin-top: 1.5rem;
+  padding: 1rem 1.1rem;
+  border: 1px solid var(--acento);
+  border-radius: 10px;
+  background: var(--acento-2);
+
+  .campos { margin-top: 1rem; }
+}
+
+.titulo-cuenta {
+  margin: 0;
+  font-size: 0.95rem;
+  font-weight: 600;
+
+  .pista {
+    display: block;
+    font-weight: 400;
+    color: var(--suave);
+    font-size: 0.78rem;
+    margin-top: 0.15rem;
+  }
+}
+
+// La pantalla del codigo vive en codigo/codigo-activacion.scss.
+
+// ---------------------------------------------------------------- sedes
+.sedes {
+  margin-top: 1.1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.titulo-sedes {
+  font-size: 0.8rem;
+  font-weight: 600;
+
+  .pista {
+    display: block;
+    font-weight: 400;
+    color: var(--suave);
+    font-size: 0.75rem;
+    margin-top: 0.15rem;
+  }
+}
+
+.casillas {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+// Cada sede es una pastilla que se puede tocar entera, no una casilla
+// diminuta con el texto al lado: el blanco de un checkbox es de 13px y esto
+// se va a usar con prisa, en recepcion, a veces desde una tablet.
+.casilla {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 0.75rem;
+  border: 1px solid var(--borde);
+  border-radius: 9px;
+  background: #fff;
+  font-size: 0.875rem;
+  cursor: pointer;
+  user-select: none;
+  transition: border-color 0.15s ease, background 0.15s ease;
+
+  &:hover { border-color: var(--acento); }
+
+  &.marcada {
+    border-color: var(--acento);
+    background: var(--acento-2);
+
+    .codigo { background: var(--acento); color: #fff; }
+  }
+
+  input { width: 1rem; height: 1rem; accent-color: var(--acento); cursor: pointer; }
+
+  .codigo {
+    padding: 0.1rem 0.4rem;
+    border-radius: 5px;
+    background: #f1f3f7;
+    color: var(--suave);
+    font-size: 0.72rem;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    transition: background 0.15s ease, color 0.15s ease;
+  }
+
+  .nombre { color: var(--tinta); }
+}
+
+// ------------------------------------------------------------- rol x sede
+// Cada opcion del desplegable de roles: el nombre y, debajo y en chico, lo
+// que ese rol pierde en cada sede marcada. La que no sirve en ninguna va
+// gris (ng-select ya le pone ng-option-disabled; esto solo la acompana).
+.opcion-rol {
+  display: flex;
+  flex-direction: column;
+  gap: 0.1rem;
+  line-height: 1.3;
+
+  small {
+    font-size: 0.72rem;
+    color: #93370d;
+    white-space: normal;
+  }
+
+  &.sin-uso {
+    .nombre { color: var(--suave); text-decoration: line-through; }
+    small   { color: var(--suave); }
+  }
+}
+
+// El aviso vivo bajo el rol (o bajo las sedes, al editar): ambar, no rojo.
+// No es un error -- se puede guardar asi -- es algo que hay que saber.
+.aviso-rol {
+  order: 5;               // debajo del mal-campo, dentro de label.campo
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  margin-top: 0.5rem;
+  padding: 0.6rem 0.8rem;
+  border-radius: 8px;
+  background: #fffaeb;
+  border: 1px solid #fedf89;
+  color: #93370d;
+  font-size: 0.8rem;
+  line-height: 1.5;
+}
+
+.motivo { margin-top: 1rem; }
+
+// "Este rol no puede ser revocado": no es un error, es la explicacion de
+// por que el desplegable del rol esta bloqueado.
+.pista.bloqueado {
+  order: 6;
+  margin-top: 0.35rem;
+  color: var(--suave);
+  font-size: 0.8rem;
+  font-style: italic;
+}

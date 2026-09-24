@@ -1,0 +1,136 @@
+// =====================================================================
+//  LA TARJETA CENTRADA DE LAS PANTALLAS DE ENTRADA: login, activar,
+//  elegir sucursal, sin permiso. Sin encabezado, una sola cosa en medio.
+//
+//    <div class="pantalla">
+//      <form class="tarjeta" [formGroup]="f" (ngSubmit)="entrar()" novalidate>
+//        <header><h1>Titulo</h1><p>Que hacer aqui.</p></header>
+//        <label><span>Usuario</span><input formControlName="username" /></label>
+//        <p class="error" role="alert">...</p>
+//        <button type="submit" class="principal">Entrar</button>
+//        <p class="pie">Primera vez? <a routerLink="/activar">Activa tu cuenta</a></p>
+//      </form>
+//    </div>
+//
+//  Todo lo de adentro (header, label, input, .pista, .error, .pie) va
+//  ANIDADO bajo .tarjeta a proposito: son etiquetas a secas, y sueltas en
+//  lo global le pegarian a todos los label e input del sistema.
+// =====================================================================
+
+.pantalla {
+  min-height: 100dvh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1.5rem;
+}
+
+.tarjeta {
+  width: 100%;
+  max-width: 24rem;
+  background: var(--panel);
+  border: 1px solid var(--borde);
+  border-radius: 12px;
+  padding: 2rem 1.75rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  box-shadow: 0 1px 2px rgb(16 24 40 / 6%), 0 8px 24px rgb(16 24 40 / 6%);
+
+  &.ancha { max-width: 34rem; }
+
+  header {
+    text-align: center;
+    margin-bottom: 0.5rem;
+
+    h1 { margin: 0; font-size: 1.5rem; letter-spacing: -0.02em; }
+    p  { margin: 0.35rem 0 0; color: var(--suave); font-size: 0.875rem; }
+  }
+
+  label {
+    display: flex;
+    flex-direction: column;
+    gap: 0.35rem;
+    font-size: 0.875rem;
+
+    > span { font-weight: 600; }
+  }
+
+  input {
+    width: 100%;
+    padding: 0.6rem 0.7rem;
+    border: 1px solid var(--borde);
+    border-radius: 8px;
+    font-size: 1rem;
+    font-family: inherit;
+    background: #fff;
+    color: inherit;
+
+    &:focus {
+      outline: 2px solid var(--acento);
+      outline-offset: -1px;
+      border-color: var(--acento);
+    }
+  }
+
+  // Un input con un boton encima (el "ver" de la clave).
+  .con-boton {
+    position: relative;
+    display: flex;
+    align-items: center;
+
+    .ver {
+      position: absolute;
+      right: 0.5rem;
+      border: 0;
+      background: none;
+      color: var(--suave);
+      font-size: 0.8rem;
+      cursor: pointer;
+      padding: 0.2rem 0.3rem;
+
+      &:hover { color: var(--acento); }
+    }
+  }
+
+  .pista {
+    margin: 0;
+    font-size: 0.8rem;
+    color: var(--suave);
+  }
+
+  .error {
+    margin: 0;
+    padding: 0.6rem 0.7rem;
+    border-radius: 8px;
+    background: #fef3f2;
+    border: 1px solid #fda29b;
+    color: var(--peligro);
+    font-size: 0.875rem;
+  }
+
+  button.principal {
+    margin-top: 0.25rem;
+    padding: 0.7rem;
+    border: 0;
+    border-radius: 8px;
+    background: var(--acento);
+    color: #fff;
+    font-size: 1rem;
+    font-weight: 600;
+    font-family: inherit;
+    cursor: pointer;
+
+    &:disabled { opacity: 0.6; cursor: default; }
+    &:not(:disabled):hover { background: #1e40af; }
+  }
+
+  .pie {
+    margin: 0.25rem 0 0;
+    text-align: center;
+    font-size: 0.85rem;
+    color: var(--suave);
+
+    a { color: var(--acento); }
+  }
+}

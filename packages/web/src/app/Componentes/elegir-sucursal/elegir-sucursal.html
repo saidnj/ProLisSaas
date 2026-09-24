@@ -1,0 +1,37 @@
+<div class="pantalla">
+  <div class="tarjeta ancha">
+    <header>
+      <h1>{{ sesion.nombreEmpresa() }}</h1>
+      <p>Hola {{ sesion.persona()?.nombre ?? sesion.usuario()?.username }}. En que sede vas a trabajar?</p>
+    </header>
+
+    @if (error()) {
+      <p class="error" role="alert">{{ error() }}</p>
+    }
+
+    @for (s of sesion.sucursales(); track s.sucursalId) {
+      <button type="button" class="sede"
+              [disabled]="eligiendo() !== null"
+              (click)="elegir(s.sucursalId)">
+        <span class="codigo">{{ s.codigo }}</span>
+        <span class="texto">
+          <span class="nombre">{{ s.nombre }}</span>
+          <span class="detalle">
+            {{ eligiendo() === s.sucursalId
+                ? 'entrando...'
+                : s.permisos.length + ' permisos · ' + s.modulos.length + ' modulos' }}
+          </span>
+        </span>
+      </button>
+    } @empty {
+      <p class="error">
+        No tenes ninguna sucursal activa asignada. Pedile al administrador
+        acceso a una sede.
+      </p>
+    }
+
+    <p class="pie">
+      <a href="#" (click)="$event.preventDefault(); salir()">Salir</a>
+    </p>
+  </div>
+</div>

@@ -1,0 +1,96 @@
+// =====================================================================
+//  LOS CAMPOS DE UN FORMULARIO DE ADENTRO (crear/editar algo). Van en
+//  una rejilla que se acomoda sola: dos o tres columnas en pantalla
+//  ancha, una en angosta.
+//
+//    <form class="panel" [formGroup]="f" (ngSubmit)="guardar()" novalidate>
+//      <div class="cuerpo">
+//        <div class="campos">
+//          <label class="campo">
+//            <span>Nombres *</span>
+//            <span class="pista">Opcional: que significa el campo.</span>
+//            <input type="text" formControlName="nombres" [class.malo]="malo('nombres')" />
+//            @if (malo('nombres')) { <span class="mal-campo">Hace falta el nombre</span> }
+//          </label>
+//          <label class="campo ancho-total"> ...ocupa toda la fila... </label>
+//          <label class="interruptor"><input type="checkbox" formControlName="activo" /> <span>Activo</span></label>
+//        </div>
+//        <div class="pie-formulario">
+//          <a class="boton fantasma" routerLink="..">Cancelar</a>
+//          <button type="submit" class="boton primario">Guardar</button>
+//        </div>
+//      </div>
+//    </form>
+// =====================================================================
+
+.campos {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(15rem, 1fr));
+  gap: 1rem;
+
+  .ancho-total { grid-column: 1 / -1; }
+}
+
+label.campo {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+  font-size: 0.8rem;
+
+  > span { font-weight: 600; }
+
+  // La pista va DEBAJO del campo, no entre la etiqueta y el campo.
+  //
+  // Es por alineacion: con la pista en medio, los campos que la tienen
+  // empujan su input mas abajo que los que no, y en una rejilla de varias
+  // columnas quedan todos a distinta altura. Con order, la etiqueta y el
+  // input siempre son la fila 1 y la 2 de todos, y la pista cuelga al final
+  // sin mover nada. No hace falta tocar el HTML.
+  > .pista {
+    order: 3;
+    margin-top: 0.15rem;
+    font-weight: 400;
+    color: var(--suave);
+    font-size: 0.75rem;
+  }
+
+  > input, > select { order: 2; }
+  > .mal-campo { order: 4; }
+
+  input[type='text'], input[type='email'], input[type='tel'], select {
+    height: 2.4rem;
+    padding: 0 0.7rem;
+    border: 1px solid var(--borde);
+    border-radius: 8px;
+    font: inherit;
+    font-size: 0.9rem;
+    color: inherit;
+    background: #fff;
+
+    &:focus { outline: 2px solid var(--acento); outline-offset: -1px; border-color: var(--acento); }
+    &.malo  { border-color: #fda29b; }
+  }
+}
+
+label.interruptor {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  font-size: 0.875rem;
+  cursor: pointer;
+
+  input { width: 1.05rem; height: 1.05rem; accent-color: var(--acento); }
+  .pista { color: var(--suave); font-size: 0.78rem; }
+}
+
+// El texto rojo bajo un campo: "hace falta", "ya esta en uso".
+.mal-campo { color: var(--peligro); font-size: 0.75rem; font-weight: 500; }
+
+.pie-formulario {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.5rem;
+  margin-top: 1.5rem;
+  padding-top: 1.25rem;
+  border-top: 1px solid var(--borde);
+}

@@ -1,0 +1,377 @@
+<app-encabezado />
+
+<div class="pagina">
+
+  @if (codigoNuevo(); as c) {
+    <!-- El codigo, una sola vez. La pantalla vive en codigo/, compartida
+         con "generar codigo nuevo" del detalle. -->
+    <app-codigo-activacion
+      [codigo]="c.codigo"
+      [nombre]="c.nombre"
+      [venceEn]="c.venceEn"
+      motivo="nuevo"
+      (listo)="terminar()" />
+
+  } @else {
+
+    <div class="migas">
+      <a routerLink="/empleados">Empleados</a> <span>/</span>
+      <span>{{ titulo() }}</span>
+    </div>
+
+    <div class="cabecera">
+      <div>
+        <h1>{{ titulo() }}</h1>
+        <p class="sub">
+          @if (sinCuenta()) {
+            Este empleado es de antes y no tiene cuenta todavia: al guardar se le crea
+            con lo que pongas abajo. Si queda activo, sale su codigo.
+          } @else if (editando) {
+            Cambiar los datos de la persona y con que usuario, rol y sedes entra.
+            Resetear su clave o desbloquearla va en la ficha.
+          } @else {
+            La persona y su cuenta para entrar al sistema, de una vez. Si la
+            marcas activa, sale un codigo de un solo uso con el que ella misma
+            define su clave. Vos nunca la vas a saber.
+          }
+        </p>
+      </div>
+    </div>
+
+    @if (cargando()) {
+      <p class="cargando">Cargando...</p>
+
+    } @else if (porQueNoFicha(); as motivo) {
+      <!-- LA FICHA SIGUE A LA CUENTA: la del propietario la edita solo el
+           propietario, la de un administrador solo el propietario. Si quien
+           esta sentado no puede, no hay formulario: se dice y se ofrece la
+           ficha. La base lo rechaza igual (rls_empleado_editar). -->
+      <div class="panel">
+        <div class="estado">
+          <strong>Esta ficha no se edita desde aqui</strong>
+          <p>{{ motivo }}</p>
+          <a class="boton suave" [routerLink]="['/empleados', id]">Ver la ficha</a>
+        </div>
+      </div>
+
+    } @else {
+
+      @if (error()) {
+        <p class="error-caja" role="alert">{{ error() }}</p>
+      }
+
+      <form class="panel" [formGroup]="formulario" (ngSubmit)="guardar()" novalidate>
+        <div class="cuerpo">
+          <div class="campos">
+
+            <!-- Lo que ya es de otro empleado sale junto a su campo (enUso).
+                 Se dice que esta en uso, no de quien. -->
+            <label class="campo">
+              <span>Nombres *</span>
+              <input type="text" formControlName="nombres" [class.malo]="malo('nombres') || enUso().has('nombre')"
+                     autocomplete="off" autofocus />
+              @if (malo('nombres')) { <span class="mal-campo">Hace falta el nombre</span> }
+            </label>
+
+            <label class="campo">
+              <span>Apellidos *</span>
+              <input type="text" formControlName="apellidos" [class.malo]="malo('apellidos') || enUso().has('nombre')"
+                     autocomplete="off" />
+              @if (malo('apellidos')) { <span class="mal-campo">Hacen falta los apellidos</span> }
+              @if (enUso().has('nombre')) { <span class="mal-campo">Ya hay un empleado con ese nombre (nombres y apellidos)</span> }
+            </label>
+
+            <label class="campo">
+              <span>Numero de identidad</span>
+              <span class="pista">Opcional. No todos lo traen el primer dia.</span>
+              <input type="text" formControlName="documento" [class.malo]="enUso().has('documento')" autocomplete="off" />
+              @if (enUso().has('documento')) { <span class="mal-campo">Ese numero de identidad ya esta en uso</span> }
+            </label>
+
+            <label class="campo">
+              <span>Cargo</span>
+              <input type="text" formControlName="cargo" autocomplete="off"
+                     placeholder="Recepcion, Analista, Bioquimico..." />
+            </label>
+
+            <label class="campo">
+              <span>Telefono</span>
+              <input type="tel" formControlName="telefono" [class.malo]="enUso().has('telefono')" autocomplete="off"
+                     placeholder="9988-1122" />
+              @if (enUso().has('telefono')) { <span class="mal-campo">Ese telefono ya esta en uso</span> }
+            </label>
+
+            <label class="campo">
+              <span>Correo</span>
+              <input type="email" formControlName="correo" [class.malo]="malo('correo') || enUso().has('correo')"
+                     autocomplete="off" />
+              @if (malo('correo')) { <span class="mal-campo">Ese correo no tiene forma de correo</span> }
+              @if (enUso().has('correo')) { <span class="mal-campo">Ese correo ya esta en uso</span> }
+            </label>
+
+            <label class="campo ancho-total">
+              <span>Numero de colegiacion</span>
+              <span class="pista">
+                Solo para quien firma informes -- el bioquimico o el medico. Se
+                imprime junto a la firma.
+              </span>
+              <input type="text" formControlName="numeroColegiacion" [class.malo]="enUso().has('colegiacion')" autocomplete="off"
+                     placeholder="CQFH-0000" />
+              @if (enUso().has('colegiacion')) { <span class="mal-campo">Ese numero de colegiacion ya esta en uso</span> }
+            </label>
+
+            <div class="ancho-total">
+              <!-- ACTIVO es del empleado, y manda sobre la cuenta: inactivo =
+                   cuenta suspendida (lo hace la base: al nacer y despues).
+                   No es "con cuenta o sin cuenta" -- todo empleado tiene. -->
+              <label class="interruptor">
+                <input type="checkbox" formControlName="activo" />
+                <span>
+                  Activo
+                  <span class="pista">
+                    @if (!editando || sinCuenta()) {
+                      — apagado, no aparece en las listas y su cuenta nace <strong>suspendida</strong>,
+                      sin codigo: no entra hasta que lo actives (alguien que empieza mas adelante).
+                    } @else {
+                      — apagarlo lo saca de las listas y <strong>suspende su cuenta</strong>: no
+                      entra hasta que lo vuelvas a activar. No lo borra: aqui nada se borra.
+                    }
+                  </span>
+                </span>
+              </label>
+            </div>
+
+          </div>
+
+          @if (!editando) {
+            <!-- ======================================================
+                 LA CUENTA, SIEMPRE. Empleado y usuario son uno: aqui no
+                 hay "darle acceso o no". El que no debe entrar se deja
+                 inactivo (arriba) y su cuenta nace suspendida.
+                 ====================================================== -->
+            <div class="seccion-cuenta">
+              <h2 class="titulo-cuenta">
+                Su cuenta
+                <span class="pista">Con esto entra al sistema. La clave la define ella misma con el codigo.</span>
+              </h2>
+
+              <div class="campos">
+                <label class="campo">
+                  <span>Usuario *</span>
+                  <span class="pista">Con el que va a entrar. Se guarda en minusculas.</span>
+                  <input type="text" formControlName="username" [class.malo]="(intentado() && faltaUsuario()) || enUso().has('username')"
+                         autocomplete="off" autocapitalize="off" spellcheck="false"
+                         placeholder="ana.lopez" />
+                  @if (intentado() && faltaUsuario()) { <span class="mal-campo">Al menos 3 caracteres</span> }
+                  @if (enUso().has('username')) { <span class="mal-campo">Ese usuario ya esta en uso</span> }
+                </label>
+              </div>
+
+              <!-- LAS SEDES ANTES QUE EL ROL, a proposito. Un rol no es de
+                   una sede, pero sus permisos son de modulos y una sede
+                   puede tener un modulo apagado: el rol se elige con las
+                   sedes a la vista, y la lista dice que le queda en cada una. -->
+              <ng-container [ngTemplateOutlet]="bloqueSedes"></ng-container>
+
+              <ng-container [ngTemplateOutlet]="bloqueRol"></ng-container>
+            </div>
+
+          } @else {
+            <!-- ======================================================
+                 AL EDITAR la cuenta va en el MISMO guardar que la ficha:
+                 usuario, sedes y rol salen en una sola peticion y la base
+                 los aplica en una transaccion (todo o nada). Resetear la
+                 clave no: es una decision aparte, vive en el detalle.
+                 Si la cuenta es de un administrador y quien edita no es el
+                 propietario, no se llega aqui: la ficha entera sigue a la
+                 cuenta (porQueNoFicha). Lo unico que puede venir bloqueado
+                 es el rol del propietario, que no se cambia (core.cambiar_rol
+                 lo decide; aqui se avisa y no se manda).
+                 Si todavia no tiene cuenta, sale vacia y guardar la crea.
+                 ====================================================== -->
+            <div class="seccion-cuenta">
+              <h2 class="titulo-cuenta">
+                Su cuenta
+                @if (sinCuenta()) {
+                  <span class="pista">Todavia no tiene. Con esto entra al sistema; la clave la define ella misma con el codigo.</span>
+                }
+              </h2>
+              <div class="campos">
+                <label class="campo">
+                  <span>Usuario *</span>
+                  <span class="pista">
+                    @if (sinCuenta()) {
+                      Con el que va a entrar. Se guarda en minusculas.
+                    } @else {
+                      Con el que entra. Se guarda en minusculas. Si lo cambias, su sesion
+                      abierta sigue; el nombre nuevo le aparece cuando vuelva a entrar.
+                    }
+                  </span>
+                  <input type="text" formControlName="username"
+                         [class.malo]="(intentado() && faltaUsuario()) || enUso().has('username')"
+                         autocomplete="off" autocapitalize="off" spellcheck="false" />
+                  @if (intentado() && faltaUsuario()) { <span class="mal-campo">Al menos 3 caracteres</span> }
+                  @if (enUso().has('username')) { <span class="mal-campo">Ese usuario ya esta en uso</span> }
+                </label>
+              </div>
+
+              <ng-container [ngTemplateOutlet]="bloqueSedes"></ng-container>
+              <ng-container [ngTemplateOutlet]="bloqueRol"></ng-container>
+
+              @if (rolCambia()) {
+                <label class="campo ancho-total motivo">
+                  <span>Por que le cambias el rol</span>
+                  <span class="pista">
+                    Se guarda en la bitacora junto al cambio. Si lo dejas vacio se anota uno generico.
+                  </span>
+                  <input type="text" formControlName="motivoRol"
+                         placeholder="asume la jefatura de la sede Norte" />
+                </label>
+              }
+
+              @if (hayRetiros()) {
+                <label class="campo ancho-total motivo">
+                  <span>Por que le quitas esas sedes</span>
+                  <span class="pista">
+                    Se guarda junto al retiro. Si lo dejas vacio se anota uno generico.
+                  </span>
+                  <input type="text" formControlName="motivo"
+                         placeholder="se traslado a la sede central" />
+                </label>
+              }
+            </div>
+          }
+
+          <div class="pie-formulario">
+            <a class="boton fantasma" routerLink="/empleados">Cancelar</a>
+            <button type="submit" class="boton primario" [disabled]="guardando()">
+              {{ guardando() ? 'Guardando...' : (editando ? 'Guardar cambios' : 'Crear empleado') }}
+            </button>
+          </div>
+        </div>
+        <!-- ==============================================================
+             EL ROL. Sirve para crear y para editar. Recibe los roles EVALUADOS:
+             contra las sedes marcadas (que le queda en cada una) y contra quien
+             esta sentado (el del propietario no se asigna; uno de administrador
+             solo lo asigna el propietario). Lo que no se puede elegir va gris con
+             su motivo, y al editar el desplegable entero puede venir bloqueado.
+
+             VA ADENTRO DEL <form> A PROPOSITO: formControlName busca su
+             formGroup en donde la plantilla se DECLARA, no en donde se
+             inserta. Afuera del form reventaria al pintarse.
+             ============================================================== -->
+        <ng-template #bloqueRol>
+        <div class="campos">
+          <label class="campo">
+            <span>Rol *</span>
+            <span class="pista">Lo que va a poder hacer adentro, en las sedes marcadas.</span>
+            <!-- ng-select en vez de <select>: con buscador, se maneja
+                 con el teclado, y con formControlName igual que un
+                 input normal (implementa ControlValueAccessor). Con
+                 cinco roles el buscador sobra; con cien examenes o mil
+                 pacientes no, y conviene que todos los desplegables
+                 del sistema se comporten igual.
+
+                 Recibe los roles EVALUADOS contra las sedes marcadas:
+                 el que no sirve en ninguna trae disabled=true y
+                 ng-select lo pinta gris solo. Va bloqueado hasta que
+                 haya al menos una sede. -->
+            <ng-select
+              formControlName="rolId"
+              [items]="rolesEvaluados()"
+              bindLabel="nombre"
+              bindValue="rolId"
+              [readonly]="!haySedes() || (editando && !puedeCambiarRol())"
+              [placeholder]="haySedes() ? 'Busca o elegi un rol' : 'Primero marca al menos una sede'"
+              notFoundText="Ningun rol con ese nombre"
+              [clearable]="false"
+              [class.malo]="(intentado() && faltaRol()) || rolSinUso() || rolVetado() !== null">
+              <ng-template ng-option-tmp let-r="item">
+                <div class="opcion-rol" [class.sin-uso]="r.disabled">
+                  <span class="nombre">{{ r.nombre }}</span>
+                  @if (r.vetado) {
+                    <small>{{ r.vetado }}</small>
+                  } @else if (r.sinUso) {
+                    <small>No sirve en las sedes marcadas: ninguna tiene sus modulos</small>
+                  } @else {
+                    @for (x of r.parcial; track x.sede.sucursalId) {
+                      <small>{{ x.sede.nombre }}: sin {{ x.faltan.join(', ') }} &middot; le quedan {{ r.total - x.pierde }} de {{ r.total }} permisos</small>
+                    }
+                  }
+                </div>
+              </ng-template>
+            </ng-select>
+            @if (intentado() && faltaRol()) { <span class="mal-campo">Hace falta elegir un rol</span> }
+            @if (rolVetado(); as v) { <span class="mal-campo">{{ v }}</span> }
+            @if (porQueNoCambia(); as p) { <span class="pista bloqueado">{{ p }}</span> }
+            <ng-container [ngTemplateOutlet]="avisoRol"></ng-container>
+          </label>
+        </div>
+        </ng-template>
+      </form>
+    }
+  }
+</div>
+
+<!-- =====================================================================
+     LAS SEDES. El mismo bloque sirve para crear y para editar, asi que va
+     una sola vez y se inserta donde toca con ngTemplateOutlet.
+
+     Que sean casillas y no un desplegable es a proposito: hay que poder
+     marcar varias, y quien administra tiene que VER de un vistazo en
+     cuantas sedes entra esa persona.
+     ===================================================================== -->
+<ng-template #bloqueSedes>
+  <div class="sedes">
+    <span class="titulo-sedes">
+      En que sedes puede entrar *
+      <span class="pista">
+        Al menos una. Sin sedes, la persona activa su clave y aun asi no
+        entra a ningun lado.
+      </span>
+    </span>
+
+    <div class="casillas">
+      @for (s of sedes(); track s.sucursalId) {
+        <label class="casilla" [class.marcada]="elegidas().has(s.sucursalId)">
+          <input type="checkbox"
+                 [checked]="elegidas().has(s.sucursalId)"
+                 (change)="alternarSede(s.sucursalId)" />
+          <span class="codigo">{{ s.codigo }}</span>
+          <span class="nombre">{{ s.nombre }}</span>
+        </label>
+      } @empty {
+        <span class="mal-campo">No se pudieron traer las sucursales</span>
+      }
+    </div>
+
+    @if (intentado() && faltanSedes()) {
+      <span class="mal-campo">Hace falta marcar al menos una sede</span>
+    }
+  </div>
+</ng-template>
+
+<!-- =====================================================================
+     EL ROL CRUZADO CON LAS SEDES MARCADAS. Se recalcula solo con cada
+     casilla: si despues de elegir el rol se desmarca la unica sede donde
+     servia, el aviso aparece sin que nadie lo llame y no deja guardar.
+     ===================================================================== -->
+<ng-template #avisoRol>
+  @if (rolElegido(); as r) {
+    @if (r.sinUso) {
+      <span class="mal-campo">
+        Con esas sedes, {{ r.nombre }} no puede hacer nada: ninguna tiene
+        encendidos los modulos de ese rol. Marca otra sede o elegi otro rol.
+      </span>
+    } @else if (r.parcial.length > 0) {
+      <div class="aviso-rol">
+        @for (x of r.parcial; track x.sede.sucursalId) {
+          <span>
+            En <strong>{{ x.sede.nombre }}</strong> no esta {{ x.faltan.join(' ni ') }}:
+            de {{ r.total }} permisos de {{ r.nombre }} ahi le quedan {{ r.total - x.pierde }}.
+          </span>
+        }
+      </div>
+    }
+  }
+</ng-template>

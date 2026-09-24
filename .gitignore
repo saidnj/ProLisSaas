@@ -1,0 +1,28 @@
+# ProLisSaas - lo que NO va al repositorio
+#
+# Cada paquete tiene el suyo (packages/api, packages/web); este cubre la raiz
+# y lo que a esos les falta.
+
+# Dependencias y compilados
+node_modules/
+dist/
+.angular/
+out-tsc/
+coverage/
+
+# Lo que genera Prisma (se vuelve a crear con `npx prisma generate`)
+packages/api/src/generated/
+
+# Secretos: la conexion a la base y el token con el que se hace push
+.env
+.env.*
+!.env.ejemplo
+.git-credenciales
+
+# Ruido del sistema y de editores
+.DS_Store
+Thumbs.db
+*.log
+.vscode/*
+!.vscode/settings.json
+!.vscode/extensions.json

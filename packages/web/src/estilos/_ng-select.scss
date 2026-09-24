@@ -1,0 +1,81 @@
+// =====================================================================
+//  NG-SELECT, adaptado al sistema. Los colores salen de :root.
+// =====================================================================
+
+// ---------------------------------------------------------------------
+//  ng-select: el desplegable con buscador.
+//
+//  El tema de la libreria y, debajo, lo que hace falta para que se vea
+//  como el resto de los campos del sistema: misma altura, mismo borde,
+//  mismo aro de foco. Tiene que ser global (y no del .scss del
+//  formulario) porque los estilos de componente estan encapsulados y no
+//  alcanzan a los elementos que ng-select dibuja por dentro.
+// ---------------------------------------------------------------------
+.ng-select {
+  font-size: 0.9rem;
+
+  .ng-select-container {
+    min-height: 2.4rem;
+    border: 1px solid var(--borde);
+    border-radius: 8px;
+    color: var(--tinta);
+    transition: border-color 0.15s ease, box-shadow 0.15s ease;
+
+    &:hover { box-shadow: none; }
+  }
+
+  &.ng-select-single .ng-select-container { height: 2.4rem; }
+
+  .ng-select-container .ng-value-container {
+    padding-left: 0.7rem;
+    .ng-placeholder { color: #98a2b3; }
+  }
+
+  &.ng-select-single .ng-select-container .ng-value-container .ng-input {
+    top: auto;
+    padding-left: 0.7rem;
+  }
+
+  // Mismo aro de foco que los <input> del sistema.
+  &.ng-select-focused:not(.ng-select-opened) > .ng-select-container,
+  &.ng-select-opened > .ng-select-container {
+    border-color: var(--acento);
+    box-shadow: 0 0 0 1px var(--acento);
+  }
+
+  &.ng-select-opened.ng-select-bottom > .ng-select-container {
+    border-bottom-left-radius: 8px;
+    border-bottom-right-radius: 8px;
+  }
+
+  // El mismo rojo que [class.malo] en los input.
+  &.malo .ng-select-container { border-color: #fda29b; }
+
+  .ng-arrow-wrapper .ng-arrow { border-color: var(--suave) transparent transparent; }
+  .ng-clear-wrapper { color: var(--suave); }
+}
+
+// El panel con las opciones.
+.ng-dropdown-panel {
+  border: 1px solid #dfe3ea;
+  border-radius: 10px;
+  margin-top: 4px;
+  box-shadow: 0 8px 24px rgb(16 24 40 / 12%);
+  overflow: hidden;
+
+  .ng-dropdown-panel-items .ng-option {
+    padding: 0.55rem 0.7rem;
+    font-size: 0.9rem;
+    color: #1c2333;
+
+    &.ng-option-marked { background: #eef3ff; color: #1d4ed8; }
+    &.ng-option-selected,
+    &.ng-option-selected.ng-option-marked { background: #eef3ff; color: #1d4ed8; font-weight: 600; }
+    &.ng-option-disabled { color: #98a2b3; }
+  }
+
+  // "No hay resultados" y "Escribi para buscar".
+  .ng-dropdown-panel-items .ng-option.ng-option-disabled,
+  .ng-dropdown-panel .ng-dropdown-footer,
+  .ng-dropdown-panel .ng-dropdown-header { color: #667085; }
+}

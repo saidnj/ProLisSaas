@@ -1,0 +1,59 @@
+// =====================================================================
+//  LA TABLA DE DATOS. Va adentro de .tabla-envoltura (que le da scroll
+//  horizontal en pantallas angostas) y lleva la clase .tabla: una tabla
+//  sin la clase no recibe nada, asi que una tabla de otro tipo (un
+//  informe, una cuadricula de resultados) no hereda esto sin querer.
+//
+//    <div class="tabla-envoltura">
+//      <table class="tabla">
+//        <thead><tr><th>Nombre</th><th></th></tr></thead>
+//        <tbody>
+//          <tr>
+//            <td><span class="principal">Carla Nunez</span>
+//                <span class="secundario">Recepcion</span></td>
+//            <td><div class="acciones-fila"> ...botones .chico... </div></td>
+//          </tr>
+//        </tbody>
+//      </table>
+//    </div>
+// =====================================================================
+
+.tabla-envoltura { overflow-x: auto; }
+
+table.tabla {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.875rem;
+
+  th {
+    text-align: left;
+    font-size: 0.72rem;
+    font-weight: 650;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--suave);
+    padding: 0.6rem 1rem;
+    border-bottom: 1px solid var(--borde);
+    white-space: nowrap;
+    background: #fafbfd;
+  }
+
+  td {
+    padding: 0.7rem 1rem;
+    border-bottom: 1px solid #f0f2f6;
+    vertical-align: middle;
+  }
+
+  tbody tr:last-child td { border-bottom: 0; }
+  tbody tr:hover td { background: #fafbff; }
+
+  .acciones-fila {
+    display: flex;
+    gap: 0.35rem;
+    justify-content: flex-end;
+  }
+
+  .principal { font-weight: 600; }
+  .secundario { color: var(--suave); font-size: 0.8rem; }
+  .apagado { color: var(--tenue); }
+}

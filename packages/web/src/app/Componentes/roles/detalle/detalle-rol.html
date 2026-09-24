@@ -1,0 +1,132 @@
+<app-encabezado />
+
+<div class="pagina">
+
+  <div class="migas">
+    <a routerLink="/roles">Roles</a> <span>/</span>
+    <span>{{ rol()?.nombre ?? '...' }}</span>
+  </div>
+
+  @if (cargando()) {
+    <p class="cargando">Cargando...</p>
+
+  } @else if (error()) {
+    <p class="error-caja" role="alert">{{ error() }}</p>
+    <a class="boton suave" routerLink="/roles">Volver a la lista</a>
+
+  } @else if (rol(); as r) {
+
+    <div class="cabecera">
+      <div>
+        <h1>{{ r.nombre }}</h1>
+        <p class="sub">
+          @if (r.descripcion) { {{ r.descripcion }} · }
+          @if (r.activo) {
+            <span class="chip si">Activo</span>
+          } @else {
+            <span class="chip no">Inactivo</span>
+          }
+          @if (r.esSistema) { <span class="chip info">Propietario</span> }
+          @else if (r.esAdmin) { <span class="chip info">Administrador</span> }
+          @if (r.esFijo && !r.esSistema) { <span class="chip gris">del operador</span> }
+          @if (r.esElMio) { <span class="chip gris">el tuyo</span> }
+        </p>
+      </div>
+
+      <div class="acciones">
+        <a class="boton fantasma" routerLink="/roles">Volver</a>
+        @if (porQueNo() === null) {
+          <a class="boton primario" [routerLink]="['/roles', r.rolId, 'editar']">Editar</a>
+        }
+      </div>
+    </div>
+
+    @if (porQueNo(); as motivo) {
+      <p class="aviso-demo">{{ motivo }}</p>
+    }
+
+    <div class="panel">
+      <div class="cuerpo">
+        <dl class="datos">
+          <div class="dato">
+            <dt>Permisos</dt>
+            <dd>{{ r.cuantosPermisos }}</dd>
+          </div>
+          <div class="dato">
+            <dt>Empleados con este rol</dt>
+            <dd>{{ r.cuantosEmpleados }}</dd>
+          </div>
+          @if (!r.activo) {
+            <div class="dato ancho">
+              <dt>Estado</dt>
+              <dd class="pista">
+                Inactivo: ya no se le asigna a nadie. Quien lo tenia puesto lo sigue teniendo.
+              </dd>
+            </div>
+          }
+        </dl>
+      </div>
+    </div>
+
+    <!-- ======================================================== permisos -->
+    <div class="panel">
+      <div class="barra-panel"><strong>Que puede hacer</strong></div>
+      <div class="cuerpo">
+        @if (porModulo().length === 0 && fueraDelCatalogo() === 0) {
+          <div class="estado"><strong>Sin permisos</strong><p>Este rol no puede hacer nada todavia.</p></div>
+        }
+        @for (m of porModulo(); track m.id) {
+          <div class="modulo">
+            <h3>{{ m.nombre }} <span class="pista">{{ m.permisos.length }}</span></h3>
+            <ul class="permisos">
+              @for (p of m.permisos; track p.id) {
+                <li>
+                  <span class="descripcion">{{ p.descripcion }}</span>
+                  @if (esAdmin(p)) { <span class="chip info">administracion</span> }
+                </li>
+              }
+            </ul>
+          </div>
+        }
+        @if (fueraDelCatalogo() > 0) {
+          <p class="pista">
+            Y {{ fueraDelCatalogo() }} de un modulo que ya no esta contratado (no cuentan).
+          </p>
+        }
+      </div>
+    </div>
+
+    <!-- ======================================================= empleados -->
+    <div class="panel">
+      <div class="barra-panel"><strong>Quien lo tiene</strong></div>
+      @if (r.empleados.length === 0) {
+        <div class="estado"><strong>Nadie todavia</strong><p>Se asigna desde la ficha de cada empleado.</p></div>
+      } @else {
+        <div class="tabla-envoltura">
+          <table class="tabla">
+            <thead>
+              <tr><th>Empleado</th><th>Cargo</th><th>Cuenta</th><th></th></tr>
+            </thead>
+            <tbody>
+              @for (e of r.empleados; track e.empleadoId) {
+                <tr>
+                  <td>
+                    <div class="principal">{{ e.nombres }} {{ e.apellidos }}</div>
+                    @if (!e.activo) { <div class="secundario">empleado inactivo</div> }
+                  </td>
+                  <td>{{ e.cargo ?? '—' }}</td>
+                  <td><span class="chip" [class]="'chip ' + estado(e.estado).clase">{{ estado(e.estado).texto }}</span></td>
+                  <td>
+                    <div class="acciones-fila">
+                      <a class="boton fantasma chico" [routerLink]="['/empleados', e.empleadoId]">Ver</a>
+                    </div>
+                  </td>
+                </tr>
+              }
+            </tbody>
+          </table>
+        </div>
+      }
+    </div>
+  }
+</div>

@@ -1,0 +1,86 @@
+// =====================================================================
+//  EL ESQUELETO DE UNA PANTALLA DE ADENTRO: la que lleva el encabezado
+//  arriba, migas, un titulo con acciones, y uno o varios paneles.
+//
+//    <app-encabezado />
+//    <div class="pagina">
+//      <div class="migas"><a routerLink="/x">X</a> <span>/</span> <span>Y</span></div>
+//      <div class="cabecera">
+//        <div><h1>Titulo</h1><p class="sub">Que es esto.</p></div>
+//        <div class="acciones"> ...botones... </div>
+//      </div>
+//      <div class="panel">
+//        <div class="barra-panel"> ...buscador, filtros, .cuenta... </div>
+//        <div class="cuerpo"> ...o una tabla, o un formulario, o datos... </div>
+//      </div>
+//    </div>
+//
+//  Ver estilos/LEEME.md para los tres esqueletos completos.
+// =====================================================================
+
+.pagina {
+  max-width: 72rem;
+  margin: 0 auto;
+  padding: 1.75rem 1.5rem 3rem;
+}
+
+// Titulo + acciones
+.cabecera {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 1rem;
+  flex-wrap: wrap;
+  margin-bottom: 1.25rem;
+
+  h1 { margin: 0; font-size: 1.5rem; letter-spacing: -0.02em; }
+  .sub { margin: 0.25rem 0 0; color: var(--suave); font-size: 0.875rem; }
+  .acciones { display: flex; gap: 0.5rem; flex-wrap: wrap; }
+}
+
+.migas {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  margin-bottom: 0.4rem;
+  font-size: 0.8rem;
+  color: var(--tenue);
+
+  a { color: var(--suave); text-decoration: none; }
+  a:hover { color: var(--acento); text-decoration: underline; }
+}
+
+.panel {
+  background: var(--panel);
+  border: 1px solid var(--borde);
+  border-radius: 12px;
+  overflow: hidden;
+
+  > .barra-panel {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    flex-wrap: wrap;
+    padding: 0.85rem 1rem;
+    border-bottom: 1px solid var(--borde);
+  }
+
+  > .cuerpo { padding: 1.25rem; }
+}
+
+.buscador {
+  flex: 1 1 14rem;
+  max-width: 22rem;
+  height: 2.25rem;
+  padding: 0 0.7rem;
+  border: 1px solid var(--borde);
+  border-radius: 8px;
+  font: inherit;
+  font-size: 0.875rem;
+  color: inherit;
+
+  &:focus { outline: 2px solid var(--acento); outline-offset: -1px; border-color: var(--acento); }
+}
+
+// "12 de 40" al final de la barra del panel.
+.cuenta { font-size: 0.8rem; color: var(--suave); margin-left: auto; }

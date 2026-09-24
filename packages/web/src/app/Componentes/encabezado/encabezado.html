@@ -1,0 +1,92 @@
+<header class="encabezado">
+  <div class="fila">
+
+    <!-- La marca. El nombre que se muestra es el COMERCIAL, el de rotulo,
+         no el legal del RTN (E-21). -->
+    <a class="marca" routerLink="/inicio" (click)="cerrarMenu()">
+      <span class="logo">{{ sesion.nombreEmpresa().slice(0, 2).toUpperCase() }}</span>
+      <span class="textos">
+        <strong>{{ sesion.nombreEmpresa() }}</strong>
+        @if (sesion.sucursal(); as sede) {
+          <span class="sede">{{ sede.codigo }} · {{ sede.nombre }}</span>
+        }
+      </span>
+    </a>
+
+    <!-- Solo aparece en pantallas angostas. -->
+    <button class="hamburguesa" type="button"
+            [attr.aria-expanded]="menuAbierto()"
+            aria-label="Menu"
+            (click)="menuAbierto.set(!menuAbierto())">
+      <span></span><span></span><span></span>
+    </button>
+
+    <nav class="navegacion" [class.abierta]="menuAbierto()">
+      @for (opcion of menu(); track opcion.texto) {
+
+        @if (opcion.hijos) {
+          <!-- Rama con submenu. Abre al pasar el mouse Y al recibir el foco
+               con el teclado: el :focus-within del CSS hace las dos cosas
+               sin una linea de JavaScript. -->
+          <div class="rama">
+            <button class="opcion" type="button">
+              {{ opcion.texto }}
+              <svg class="punta" viewBox="0 0 10 6" aria-hidden="true">
+                <path d="M1 1l4 4 4-4" fill="none" stroke="currentColor"
+                      stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+              </svg>
+            </button>
+
+            <div class="submenu">
+              @for (hijo of opcion.hijos; track hijo.texto) {
+                @if (hijo.ruta) {
+                  <a [routerLink]="hijo.ruta" routerLinkActive="activo"
+                     (click)="cerrarMenu()">{{ hijo.texto }}</a>
+                } @else {
+                  <span class="pendiente">{{ hijo.texto }}<em>pronto</em></span>
+                }
+              }
+            </div>
+          </div>
+
+        } @else {
+          @if (opcion.ruta) {
+            <a class="opcion" [routerLink]="opcion.ruta" routerLinkActive="activo"
+               (click)="cerrarMenu()">{{ opcion.texto }}</a>
+          } @else {
+            <span class="opcion pendiente">{{ opcion.texto }}<em>pronto</em></span>
+          }
+        }
+
+      } @empty {
+        <span class="sin-menu">Tu rol no tiene ninguna opcion en esta sede</span>
+      }
+    </nav>
+
+    <!-- El usuario, con el mismo mecanismo de submenu. -->
+    <div class="rama usuario">
+      <button class="perfil" type="button">
+        <span class="avatar">{{ iniciales() }}</span>
+        <span class="nombre">{{ sesion.persona()?.nombre ?? sesion.usuario()?.username }}</span>
+        <svg class="punta" viewBox="0 0 10 6" aria-hidden="true">
+          <path d="M1 1l4 4 4-4" fill="none" stroke="currentColor"
+                stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+      </button>
+
+      <div class="submenu derecha">
+        <div class="quien">
+          <strong>{{ sesion.persona()?.nombre ?? sesion.usuario()?.username }}</strong>
+          <span>{{ sesion.rol()?.nombre }}</span>
+          @if (sesion.persona()?.cargo; as cargo) { <span>{{ cargo }}</span> }
+        </div>
+
+        @if (sesion.sucursales().length > 1) {
+          <button type="button" (click)="cambiarSucursal()">Cambiar de sede</button>
+        }
+        <button type="button" class="salir" (click)="salir()">Salir</button>
+      </div>
+    </div>
+
+  </div>
+</header>

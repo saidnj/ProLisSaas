@@ -1,0 +1,352 @@
+// =====================================================================
+//  El encabezado.
+//
+//  Los submenus abren con :hover Y con :focus-within. El segundo es el que
+//  hace que funcione con el teclado -- Tab hasta la opcion y el submenu se
+//  abre solo -- y no cuesta ni una linea de JavaScript.
+//
+//  Y NO hay separacion entre la barra y el submenu a proposito: un hueco de
+//  unos pixeles es donde se cae el mouse al bajar y el menu se cierra en la
+//  cara del usuario. Pegado, no pasa.
+// =====================================================================
+
+// La barra es oscura, asi que aqui la tinta, el acento y el peligro son
+// los tonos claros: se REDEFINEN las variables globales solo para lo que
+// esta adentro del encabezado. Es una excepcion local, no otra paleta.
+:host {
+  --barra:    #295196;
+  --barra-2:  #193054;
+  --tinta:    #e6ecf5;
+  --suave:    #93a3bb;
+  --acento:   #4f8cff;
+  --peligro:  #ff6b6b;
+  --alto:     3.5rem;
+
+  display: block;
+}
+
+.encabezado {
+  position: sticky;
+  top: 0;
+  z-index: 50;
+  background: linear-gradient(180deg, var(--barra-2), var(--barra));
+  color: var(--tinta);
+  box-shadow: 0 1px 0 rgb(255 255 255 / 6%), 0 6px 20px rgb(8 15 26 / 28%);
+}
+
+.fila {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  height: var(--alto);
+  padding: 0 1rem;
+  max-width: 96rem;
+  margin: 0 auto;
+}
+
+// ---------------------------------------------------------------- marca
+.marca {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  text-decoration: none;
+  color: inherit;
+  padding-right: 1rem;
+  flex: 0 0 auto;
+
+  .logo {
+    display: grid;
+    place-items: center;
+    width: 2rem;
+    height: 2rem;
+    border-radius: 9px;
+    background: linear-gradient(135deg, var(--acento), #7c5cff);
+    font-size: 0.8rem;
+    font-weight: 800;
+    letter-spacing: 0.02em;
+    color: #fff;
+  }
+
+  .textos { display: flex; flex-direction: column; line-height: 1.15; }
+
+  strong {
+    font-size: 0.9rem;
+    font-weight: 650;
+    white-space: nowrap;
+  }
+
+  .sede {
+    font-size: 0.7rem;
+    color: var(--suave);
+    letter-spacing: 0.02em;
+    white-space: nowrap;
+  }
+}
+
+// ----------------------------------------------------------- navegacion
+.navegacion {
+  display: flex;
+  align-items: center;
+  gap: 0.15rem;
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.rama { position: relative; }
+
+.opcion {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  height: 2.1rem;
+  padding: 0 0.7rem;
+  border: 0;
+  border-radius: 8px;
+  background: none;
+  color: var(--suave);
+  font: inherit;
+  font-size: 0.875rem;
+  text-decoration: none;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: color 0.15s ease, background 0.15s ease;
+
+  &:hover,
+  &:focus-visible { color: var(--tinta); background: rgb(255 255 255 / 7%); }
+
+  &.activo {
+    color: #fff;
+    background: rgb(79 140 255 / 16%);
+    box-shadow: inset 0 0 0 1px rgb(79 140 255 / 30%);
+  }
+
+  .punta {
+    width: 0.6rem;
+    height: 0.6rem;
+    opacity: 0.7;
+    transition: transform 0.18s ease;
+  }
+}
+
+.rama:hover > .opcion .punta,
+.rama:focus-within > .opcion .punta { transform: rotate(180deg); }
+
+.rama:hover > .opcion,
+.rama:focus-within > .opcion { color: var(--tinta); background: rgb(255 255 255 / 7%); }
+
+// ------------------------------------------------------------- submenu
+.submenu {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  min-width: 13rem;
+  padding: 0.35rem;
+  background: #fff;
+  border-radius: 12px;
+  box-shadow: 0 10px 30px rgb(8 15 26 / 22%), 0 2px 6px rgb(8 15 26 / 12%);
+  display: flex;
+  flex-direction: column;
+  gap: 0.1rem;
+
+  // Cerrado: invisible, encogido y NO clicable. La visibility es la que
+  // impide que se puedan pulsar enlaces que no se ven; solo con opacity
+  // seguirian ahi, atrapando clics.
+  opacity: 0;
+  visibility: hidden;
+  transform: translateY(-6px) scale(0.98);
+  transform-origin: top left;
+  transition: opacity 0.16s ease, transform 0.16s ease, visibility 0s linear 0.16s;
+
+  &.derecha { left: auto; right: 0; transform-origin: top right; }
+
+  a, span.pendiente, button {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.75rem;
+    padding: 0.5rem 0.65rem;
+    border: 0;
+    border-radius: 8px;
+    background: none;
+    color: #1c2333;
+    font: inherit;
+    font-size: 0.875rem;
+    text-align: left;
+    text-decoration: none;
+    white-space: nowrap;
+    cursor: pointer;
+    transition: background 0.12s ease, color 0.12s ease;
+  }
+
+  a:hover, button:hover { background: #eef3ff; color: #1d4ed8; }
+  a.activo { background: #eef3ff; color: #1d4ed8; font-weight: 600; }
+
+  // Lo que todavia no existe se dibuja apagado, no se esconde: asi el menu
+  // muestra el mapa completo del sistema y se ve lo que falta.
+  span.pendiente {
+    color: #98a2b3;
+    cursor: default;
+
+    em {
+      font-style: normal;
+      font-size: 0.65rem;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      padding: 0.1rem 0.35rem;
+      border-radius: 999px;
+      background: #f1f3f7;
+      color: #98a2b3;
+    }
+  }
+}
+
+.rama:hover > .submenu,
+.rama:focus-within > .submenu {
+  opacity: 1;
+  visibility: visible;
+  transform: none;
+  transition: opacity 0.16s ease, transform 0.16s ease, visibility 0s;
+}
+
+// -------------------------------------------------------------- usuario
+.usuario {
+  flex: 0 0 auto;
+  margin-left: auto;
+  padding-left: 0.5rem;
+}
+
+.perfil {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  height: 2.3rem;
+  padding: 0 0.5rem;
+  border: 0;
+  border-radius: 999px;
+  background: rgb(255 255 255 / 6%);
+  color: var(--tinta);
+  font: inherit;
+  font-size: 0.85rem;
+  cursor: pointer;
+  transition: background 0.15s ease;
+
+  &:hover { background: rgb(255 255 255 / 12%); }
+
+  .avatar {
+    display: grid;
+    place-items: center;
+    width: 1.7rem;
+    height: 1.7rem;
+    border-radius: 50%;
+    background: linear-gradient(135deg, var(--acento), #7c5cff);
+    font-size: 0.7rem;
+    font-weight: 700;
+    color: #fff;
+  }
+
+  .nombre { max-width: 10rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .punta { width: 0.6rem; height: 0.6rem; opacity: 0.7; transition: transform 0.18s ease; }
+}
+
+.usuario:hover .punta,
+.usuario:focus-within .punta { transform: rotate(180deg); }
+
+.quien {
+  display: flex;
+  flex-direction: column;
+  gap: 0.1rem;
+  padding: 0.5rem 0.65rem 0.6rem;
+  margin-bottom: 0.2rem;
+  border-bottom: 1px solid #eceff4;
+
+  strong { font-size: 0.875rem; color: #1c2333; }
+  span   { font-size: 0.78rem; color: #667085; }
+}
+
+.submenu button.salir:hover { background: #fef3f2; color: #b42318; }
+
+.sin-menu { font-size: 0.8rem; color: var(--suave); padding-left: 0.5rem; }
+
+// ---------------------------------------------------------- hamburguesa
+.hamburguesa {
+  display: none;
+  flex-direction: column;
+  justify-content: center;
+  gap: 4px;
+  width: 2.2rem;
+  height: 2.2rem;
+  margin-left: auto;
+  padding: 0 0.45rem;
+  border: 0;
+  border-radius: 8px;
+  background: rgb(255 255 255 / 6%);
+  cursor: pointer;
+
+  span {
+    display: block;
+    height: 2px;
+    border-radius: 2px;
+    background: var(--tinta);
+    transition: transform 0.2s ease, opacity 0.2s ease;
+  }
+
+  &[aria-expanded='true'] {
+    span:nth-child(1) { transform: translateY(6px) rotate(45deg); }
+    span:nth-child(2) { opacity: 0; }
+    span:nth-child(3) { transform: translateY(-6px) rotate(-45deg); }
+  }
+}
+
+// ------------------------------------------------------------- angosto
+@media (max-width: 900px) {
+  .hamburguesa { display: flex; }
+  .usuario { margin-left: 0.4rem; }
+  .perfil .nombre { display: none; }
+
+  .navegacion {
+    position: absolute;
+    top: var(--alto);
+    left: 0;
+    right: 0;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 0.1rem;
+    padding: 0.5rem;
+    background: var(--barra);
+    border-top: 1px solid rgb(255 255 255 / 8%);
+    box-shadow: 0 12px 24px rgb(8 15 26 / 35%);
+
+    max-height: 0;
+    overflow: hidden;
+    opacity: 0;
+    visibility: hidden;
+    transition: max-height 0.25s ease, opacity 0.2s ease, visibility 0s linear 0.25s;
+
+    &.abierta {
+      max-height: 80vh;
+      overflow-y: auto;
+      opacity: 1;
+      visibility: visible;
+      transition: max-height 0.25s ease, opacity 0.2s ease, visibility 0s;
+    }
+  }
+
+  // En angosto no hay mouse que "pase por encima": los submenus se
+  // muestran siempre, indentados bajo su titulo.
+  .navegacion .opcion { width: 100%; justify-content: space-between; height: 2.4rem; }
+  .navegacion .punta { display: none; }
+
+  .navegacion .submenu {
+    position: static;
+    opacity: 1;
+    visibility: visible;
+    transform: none;
+    background: none;
+    box-shadow: none;
+    padding: 0 0 0.35rem 0.75rem;
+
+    a, span.pendiente { color: var(--suave); }
+    a:hover, a.activo { background: rgb(79 140 255 / 16%); color: #fff; }
+    span.pendiente em { background: rgb(255 255 255 / 8%); color: var(--suave); }
+  }
+}

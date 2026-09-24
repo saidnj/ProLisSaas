@@ -1,0 +1,117 @@
+<app-encabezado />
+
+<div class="pagina">
+
+  <div class="cabecera">
+    <div>
+      <h1>Roles</h1>
+      <p class="sub">
+        Un rol es un conjunto de permisos con nombre; a cada empleado se le pone uno.
+      </p>
+    </div>
+
+    <div class="acciones">
+      <a class="boton primario" routerLink="/roles/nuevo">+ Nuevo rol</a>
+    </div>
+  </div>
+
+  @if (error()) {
+    <p class="error-caja" role="alert">{{ error() }}</p>
+  }
+
+  <div class="panel">
+    <div class="barra-panel">
+      <input class="buscador" type="text" placeholder="Buscar por nombre o descripcion..."
+             [value]="busqueda()"
+             (input)="busqueda.set($any($event.target).value)" />
+
+      @if (inactivos() > 0) {
+        <label class="interruptor">
+          <input type="checkbox" [checked]="verInactivos()"
+                 (change)="verInactivos.set($any($event.target).checked)" />
+          Ver inactivos ({{ inactivos() }})
+        </label>
+      }
+
+      <span class="cuenta">{{ filtrados().length }} de {{ roles().length }}</span>
+    </div>
+
+    @if (cargando()) {
+      <p class="cargando">Cargando roles...</p>
+
+    } @else if (filtrados().length === 0) {
+      <div class="estado">
+        <strong>Ningun rol coincide</strong>
+        <p>Proba con otra palabra, o limpia la busqueda.</p>
+        <button type="button" class="boton suave" (click)="busqueda.set('')">Limpiar</button>
+      </div>
+
+    } @else {
+      <div class="tabla-envoltura">
+        <table class="tabla">
+          <thead>
+            <tr>
+              <th>Rol</th>
+              <th>Tipo</th>
+              <th>Permisos</th>
+              <th>Empleados</th>
+              <th>Estado</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (r of filtrados(); track r.rolId) {
+              <tr>
+                <td>
+                  <div class="principal">{{ r.nombre }}</div>
+                  @if (r.descripcion) {
+                    <div class="secundario">{{ r.descripcion }}</div>
+                  }
+                </td>
+
+                <td>
+                  <!-- Que clase de rol es: lo dice para que se entienda por que
+                       (no) hay boton de editar. -->
+                  @if (r.esSistema) {
+                    <span class="chip info">Propietario</span>
+                  } @else if (r.esAdmin) {
+                    <span class="chip info">Administrador</span>
+                  } @else {
+                    <span class="apagado">—</span>
+                  }
+                  @if (r.esFijo && !r.esSistema) {
+                    <span class="chip gris">del operador</span>
+                  }
+                  @if (r.esElMio) {
+                    <span class="chip gris">el tuyo</span>
+                  }
+                </td>
+
+                <td>{{ r.cuantosPermisos }}</td>
+
+                <td>{{ r.cuantosEmpleados }}</td>
+
+                <td>
+                  @if (r.activo) {
+                    <span class="chip si">Activo</span>
+                  } @else {
+                    <span class="chip no">Inactivo</span>
+                  }
+                </td>
+
+                <td>
+                  <div class="acciones-fila">
+                    <a class="boton fantasma chico" [routerLink]="['/roles', r.rolId]">Ver</a>
+                    @if (puedeEditar(r)) {
+                      <a class="boton suave chico" [routerLink]="['/roles', r.rolId, 'editar']">Editar</a>
+                    }
+                  </div>
+                </td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+    }
+  </div>
+</div>

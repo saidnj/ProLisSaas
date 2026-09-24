@@ -1,0 +1,1344 @@
+generator client {
+  provider        = "prisma-client"
+  output          = "../src/generated/prisma"
+  moduleFormat    = "cjs"
+  previewFeatures = ["partialIndexes"]
+}
+
+datasource db {
+  provider = "postgresql"
+  schemas  = ["audit", "comercial", "core", "integra", "lab", "plataforma"]
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model evento {
+  evento_id      BigInt   @id @default(autoincrement())
+  empresa_id     BigInt?
+  usuario_id     BigInt?
+  ocurrido_en    DateTime @default(now()) @db.Timestamptz(6)
+  accion         String
+  nombre_esquema String
+  nombre_tabla   String
+  registro_id    BigInt?
+  datos_antes    Json?
+  datos_despues  Json?
+  ip             String?  @db.Inet
+  user_agent     String?
+  empresa        empresa? @relation(fields: [empresa_id], references: [empresa_id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@index([empresa_id, ocurrido_en(sort: Desc)], map: "ix_evento_empresa")
+  @@index([nombre_esquema, nombre_tabla, registro_id], map: "ix_evento_registro")
+  @@index([usuario_id, ocurrido_en(sort: Desc)], map: "ix_evento_usuario")
+  @@schema("audit")
+}
+
+/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+model cliente {
+  cliente_id       BigInt            @id @default(autoincrement())
+  nombre           String
+  tipo             tipo_cliente
+  rtn              String?           @unique(map: "uq_cliente_rtn", where: raw("(rtn IS NOT NULL)"))
+  direccion_fiscal String?
+  nota             String?
+  creado_en        DateTime          @default(now()) @db.Timestamptz(6)
+  cliente_empresa  cliente_empresa[]
+  contacto         contacto[]
+  contrato         contrato[]
+
+  @@schema("comercial")
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+/// This table contains exclusion constraints and requires additional setup for migrations. Visit https://pris.ly/d/exclusion-constraints for more info.
+/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+model cliente_empresa {
+  cliente_id BigInt
+  empresa_id BigInt
+  desde      DateTime  @default(dbgenerated("CURRENT_DATE")) @db.Date
+  hasta      DateTime? @db.Date
+  nota       String?
+  cliente    cliente   @relation(fields: [cliente_id], references: [cliente_id], onDelete: NoAction, onUpdate: NoAction)
+  empresa    empresa   @relation(fields: [empresa_id], references: [empresa_id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@id([cliente_id, empresa_id, desde])
+  @@schema("comercial")
+}
+
+/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+model contacto {
+  contacto_id BigInt         @id @default(autoincrement())
+  cliente_id  BigInt
+  nombre      String
+  papel       papel_contacto @default(general)
+  cargo       String?
+  telefono    String?
+  correo      String?
+  activo      Boolean        @default(true)
+  nota        String?
+  creado_en   DateTime       @default(now()) @db.Timestamptz(6)
+  cliente     cliente        @relation(fields: [cliente_id], references: [cliente_id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@index([cliente_id, papel], map: "ix_contacto_cliente", where: raw("activo"))
+  @@schema("comercial")
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+model contrato {
+  contrato_id           BigInt    @id @default(autoincrement())
+  cliente_id            BigInt
+  referencia            String?
+  fecha_inicio          DateTime  @db.Date
+  fecha_fin             DateTime? @db.Date
+  renovacion_automatica Boolean   @default(false)
+  moneda                String    @default("HNL")
+  monto_periodo         Decimal?  @db.Decimal(12, 2)
+  periodo_meses         Int       @default(1) @db.SmallInt
+  condiciones           String?
+  cliente               cliente   @relation(fields: [cliente_id], references: [cliente_id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@index([cliente_id, fecha_inicio(sort: Desc)], map: "ix_contrato_cliente")
+  @@schema("comercial")
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+model motivo {
+  motivo_id         String            @id
+  tipo_evento       tipo_evento
+  nombre            String
+  descripcion       String?
+  nivel_inmediato   nivel_acceso      @default(solo_lectura)
+  dias_plazo        Int?
+  nivel_al_vencer   nivel_acceso?
+  estado_al_vencer  estado_empresa?
+  aviso_previo_dias Int               @default(0) @db.SmallInt
+  permite_exportar  Boolean           @default(true)
+  reversible        Boolean           @default(true)
+  requiere_nota     Boolean           @default(false)
+  politica_definida Boolean           @default(false)
+  activo            Boolean           @default(true)
+  creado_en         DateTime          @default(now()) @db.Timestamptz(6)
+  relacion_evento   relacion_evento[]
+
+  @@schema("comercial")
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+model relacion_evento {
+  evento_id                 BigInt          @id @default(autoincrement())
+  empresa_id                BigInt
+  tipo_evento               tipo_evento
+  motivo_id                 String
+  fecha                     DateTime        @default(dbgenerated("CURRENT_DATE")) @db.Date
+  nivel_aplicado            nivel_acceso
+  dias_plazo_aplicado       Int?
+  nivel_al_vencer_aplicado  nivel_acceso?
+  estado_al_vencer_aplicado estado_empresa?
+  fecha_vencimiento         DateTime?       @db.Date
+  politica_estaba_definida  Boolean
+  nota                      String?
+  registrado_por            String
+  registrado_en             DateTime        @default(now()) @db.Timestamptz(6)
+  empresa                   empresa         @relation(fields: [empresa_id], references: [empresa_id], onDelete: NoAction, onUpdate: NoAction)
+  motivo                    motivo          @relation(fields: [motivo_id], references: [motivo_id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@index([empresa_id, fecha(sort: Desc), evento_id(sort: Desc)], map: "ix_relacion_evento_empresa")
+  @@schema("comercial")
+}
+
+/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model acceso_sucursal {
+  usuario_id  BigInt
+  sucursal_id BigInt
+  empresa_id  BigInt
+  creado_en   DateTime @default(now()) @db.Timestamptz(6)
+  empresa     empresa  @relation(fields: [empresa_id], references: [empresa_id], onDelete: NoAction, onUpdate: NoAction)
+  sucursal    sucursal @relation(fields: [sucursal_id, empresa_id], references: [sucursal_id, empresa_id], onDelete: NoAction, onUpdate: NoAction, map: "fk_acceso_sucursal")
+  usuario     usuario  @relation(fields: [usuario_id, empresa_id], references: [usuario_id, empresa_id], onDelete: NoAction, onUpdate: NoAction, map: "fk_acceso_usuario")
+
+  @@id([usuario_id, sucursal_id])
+  @@schema("core")
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model convenio {
+  convenio_id                                  BigInt          @id @default(autoincrement())
+  empresa_id                                   BigInt          @unique(map: "uq_convenio_predeterminado", where: raw("es_predeterminado"))
+  nombre                                       String
+  tipo                                         tipo_convenio
+  modalidad_cobro                              modalidad_cobro @default(particular)
+  copago_porcentaje                            Decimal?        @db.Decimal(5, 2)
+  dia_corte                                    Int?            @db.SmallInt
+  recibe_copia_informe                         Boolean         @default(false)
+  es_predeterminado                            Boolean         @default(false)
+  empresa_destino_id                           BigInt?
+  rtn                                          String?
+  contacto                                     String?
+  telefono                                     String?
+  activo                                       Boolean         @default(true)
+  creado_en                                    DateTime        @default(now()) @db.Timestamptz(6)
+  empresa_convenio_empresa_destino_idToempresa empresa?        @relation("convenio_empresa_destino_idToempresa", fields: [empresa_destino_id], references: [empresa_id], onDelete: NoAction, onUpdate: NoAction)
+  empresa_convenio_empresa_idToempresa         empresa         @relation("convenio_empresa_idToempresa", fields: [empresa_id], references: [empresa_id], onDelete: NoAction, onUpdate: NoAction)
+  episodio                                     episodio[]
+  orden_prueba                                 orden_prueba[]
+  precio_prueba                                precio_prueba[]
+
+  @@unique([convenio_id, empresa_id], map: "uq_convenio_empresa")
+  @@unique([empresa_id, nombre], map: "uq_convenio_nombre")
+  @@schema("core")
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+/// This model contains an expression index which requires additional setup for migrations. Visit https://pris.ly/d/expression-indexes for more info.
+model correlativo {
+  correlativo_id BigInt           @id @default(autoincrement())
+  empresa_id     BigInt
+  sucursal_id    BigInt?
+  tipo           tipo_correlativo
+  prefijo        String           @default("")
+  ancho          Int              @default(6) @db.SmallInt
+  ultimo_valor   BigInt           @default(0)
+  empresa        empresa          @relation(fields: [empresa_id], references: [empresa_id], onDelete: NoAction, onUpdate: NoAction)
+  sucursal       sucursal?        @relation(fields: [sucursal_id, empresa_id], references: [sucursal_id, empresa_id], onDelete: NoAction, onUpdate: NoAction, map: "fk_correlativo_sucursal")
+
+  @@schema("core")
+}
+
+/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model empleado {
+  empleado_id        BigInt   @id @default(autoincrement())
+  empresa_id         BigInt
+  nombres            String
+  apellidos          String
+  documento          String?
+  telefono           String?
+  correo             String?
+  cargo              String?
+  numero_colegiacion String?
+  activo             Boolean  @default(true)
+  creado_en          DateTime @default(now()) @db.Timestamptz(6)
+  empresa            empresa  @relation(fields: [empresa_id], references: [empresa_id], onDelete: NoAction, onUpdate: NoAction)
+  usuario            usuario?
+
+  @@unique([empleado_id, empresa_id], map: "uq_empleado_empresa")
+  @@schema("core")
+}
+
+/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model empresa {
+  empresa_id                                                              BigInt                @id @default(autoincrement())
+  nombre                                                                  String
+  nombre_comercial                                                        String?
+  rtn                                                                     String?               @unique(map: "uq_empresa_rtn", where: raw("(rtn IS NOT NULL)"))
+  estado                                                                  estado_empresa        @default(prueba)
+  nivel_acceso                                                            nivel_acceso          @default(completo)
+  fecha_cierre                                                            DateTime?             @db.Date
+  creado_en                                                               DateTime              @default(now()) @db.Timestamptz(6)
+  evento                                                                  evento[]
+  cliente_empresa                                                         cliente_empresa[]
+  relacion_evento                                                         relacion_evento[]
+  acceso_sucursal                                                         acceso_sucursal[]
+  convenio_convenio_empresa_destino_idToempresa                           convenio[]            @relation("convenio_empresa_destino_idToempresa")
+  convenio_convenio_empresa_idToempresa                                   convenio?             @relation("convenio_empresa_idToempresa")
+  correlativo                                                             correlativo[]
+  empleado                                                                empleado[]
+  entrega                                                                 entrega[]
+  episodio                                                                episodio[]
+  informe                                                                 informe[]
+  informe_version                                                         informe_version[]
+  mensaje                                                                 mensaje[]
+  paciente                                                                paciente[]
+  paciente_referencia_paciente_referencia_contraparte_empresa_idToempresa paciente_referencia[] @relation("paciente_referencia_contraparte_empresa_idToempresa")
+  paciente_referencia_paciente_referencia_empresa_idToempresa             paciente_referencia[] @relation("paciente_referencia_empresa_idToempresa")
+  rol                                                                     rol[]
+  rol_permiso                                                             rol_permiso[]
+  sucursal                                                                sucursal[]
+  usuario                                                                 usuario[]
+  equipo                                                                  equipo[]
+  intento_proceso                                                         intento_proceso[]
+  mapeo_codigo                                                            mapeo_codigo[]
+  mensaje_crudo                                                           mensaje_crudo[]
+  analito                                                                 analito[]
+  area                                                                    area[]
+  aviso_valor_critico                                                     aviso_valor_critico[]
+  muestra                                                                 muestra[]
+  muestra_rechazo                                                         muestra_rechazo[]
+  orden                                                                   orden[]
+  orden_prueba                                                            orden_prueba[]
+  precio_prueba                                                           precio_prueba[]
+  prueba                                                                  prueba[]
+  prueba_analito                                                          prueba_analito[]
+  rango_referencia                                                        rango_referencia[]
+  resultado                                                               resultado[]
+  tipo_muestra                                                            tipo_muestra[]
+  modulo_sucursal                                                         modulo_sucursal[]
+
+  @@index([estado, fecha_cierre], map: "ix_empresa_cierre", where: raw("(fecha_cierre IS NOT NULL)"))
+  @@schema("core")
+}
+
+/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model entrega {
+  entrega_id               BigInt          @id @default(autoincrement())
+  empresa_id               BigInt
+  informe_version_id       BigInt
+  medio                    medio_entrega
+  entregado_a              String
+  parentesco               String?
+  documento_receptor       String?
+  entregado_por_usuario_id BigInt
+  entregado_en             DateTime        @default(now()) @db.Timestamptz(6)
+  empresa                  empresa         @relation(fields: [empresa_id], references: [empresa_id], onDelete: NoAction, onUpdate: NoAction)
+  informe_version          informe_version @relation(fields: [informe_version_id], references: [informe_version_id], onDelete: NoAction, onUpdate: NoAction)
+  usuario                  usuario         @relation(fields: [entregado_por_usuario_id, empresa_id], references: [usuario_id, empresa_id], onDelete: NoAction, onUpdate: NoAction, map: "fk_entrega_usuario")
+
+  @@schema("core")
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model episodio {
+  episodio_id           BigInt          @id @default(autoincrement())
+  empresa_id            BigInt
+  sucursal_id           BigInt
+  paciente_id           BigInt
+  convenio_id           BigInt
+  mensaje_id            BigInt?
+  numero                String
+  estado                estado_episodio @default(abierto)
+  urgente               Boolean         @default(false)
+  observacion           String?
+  anulado_motivo        String?
+  creado_por_usuario_id BigInt
+  creado_en             DateTime        @default(now()) @db.Timestamptz(6)
+  cerrado_en            DateTime?       @db.Timestamptz(6)
+  empresa               empresa         @relation(fields: [empresa_id], references: [empresa_id], onDelete: NoAction, onUpdate: NoAction)
+  convenio              convenio        @relation(fields: [convenio_id, empresa_id], references: [convenio_id, empresa_id], onDelete: NoAction, onUpdate: NoAction, map: "fk_episodio_convenio")
+  mensaje               mensaje?        @relation(fields: [mensaje_id, empresa_id], references: [mensaje_id, empresa_id], onDelete: NoAction, onUpdate: NoAction, map: "fk_episodio_mensaje")
+  paciente              paciente        @relation(fields: [paciente_id, empresa_id], references: [paciente_id, empresa_id], onDelete: NoAction, onUpdate: NoAction, map: "fk_episodio_paciente")
+  sucursal              sucursal        @relation(fields: [sucursal_id, empresa_id], references: [sucursal_id, empresa_id], onDelete: NoAction, onUpdate: NoAction, map: "fk_episodio_sucursal")
+  usuario               usuario         @relation(fields: [creado_por_usuario_id, empresa_id], references: [usuario_id, empresa_id], onDelete: NoAction, onUpdate: NoAction, map: "fk_episodio_usuario")
+  informe               informe[]
+  orden                 orden?
+
+  @@unique([episodio_id, empresa_id], map: "uq_episodio_empresa")
+  @@unique([empresa_id, numero], map: "uq_episodio_numero")
+  @@index([empresa_id, paciente_id, creado_en(sort: Desc)], map: "ix_episodio_paciente")
+  @@index([empresa_id, sucursal_id, creado_en(sort: Desc)], map: "ix_episodio_pendientes", where: raw("(estado = 'abierto'::core.estado_episodio)"))
+  @@schema("core")
+}
+
+/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model informe {
+  informe_id      BigInt            @id @default(autoincrement())
+  empresa_id      BigInt
+  episodio_id     BigInt
+  modulo_id       String
+  numero          String
+  estado          estado_informe    @default(borrador)
+  episodio        episodio          @relation(fields: [episodio_id, empresa_id], references: [episodio_id, empresa_id], onDelete: NoAction, onUpdate: NoAction, map: "fk_informe_episodio")
+  empresa         empresa           @relation(fields: [empresa_id], references: [empresa_id], onDelete: NoAction, onUpdate: NoAction)
+  modulo          modulo            @relation(fields: [modulo_id], references: [modulo_id], onDelete: NoAction, onUpdate: NoAction)
+  informe_version informe_version[]
+  orden           orden[]
+
+  @@unique([informe_id, empresa_id], map: "uq_informe_empresa")
+  @@unique([empresa_id, numero], map: "uq_informe_numero")
+  @@schema("core")
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model informe_version {
+  informe_version_id     BigInt    @id @default(autoincrement())
+  empresa_id             BigInt
+  informe_id             BigInt
+  version                Int
+  motivo_correccion      String?
+  archivo_ruta           String?
+  archivo_hash           String?
+  emitido_por_usuario_id BigInt
+  emitido_en             DateTime  @default(now()) @db.Timestamptz(6)
+  entrega                entrega[]
+  informe                informe   @relation(fields: [informe_id, empresa_id], references: [informe_id, empresa_id], onDelete: NoAction, onUpdate: NoAction, map: "fk_informe_version_informe")
+  usuario                usuario   @relation(fields: [emitido_por_usuario_id, empresa_id], references: [usuario_id, empresa_id], onDelete: NoAction, onUpdate: NoAction, map: "fk_informe_version_usuario")
+  empresa                empresa   @relation(fields: [empresa_id], references: [empresa_id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@unique([informe_id, version], map: "uq_informe_version")
+  @@schema("core")
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model mensaje {
+  mensaje_id       BigInt              @id @default(autoincrement())
+  empresa_id       BigInt
+  enlace_id        BigInt
+  sucursal_id      BigInt
+  direccion        direccion_mensaje
+  tipo             tipo_mensaje
+  folio            String              @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  responde_a_folio String?             @db.Uuid
+  contenido        Json
+  estado           core_estado_mensaje @default(pendiente)
+  creado_en        DateTime            @default(now()) @db.Timestamptz(6)
+  entregado_en     DateTime?           @db.Timestamptz(6)
+  trabajado_en     DateTime?           @db.Timestamptz(6)
+  episodio         episodio[]
+  sucursal         sucursal            @relation(fields: [sucursal_id, empresa_id], references: [sucursal_id, empresa_id], onDelete: NoAction, onUpdate: NoAction, map: "fk_mensaje_sucursal")
+  empresa          empresa             @relation(fields: [empresa_id], references: [empresa_id], onDelete: NoAction, onUpdate: NoAction)
+  enlace           enlace              @relation(fields: [enlace_id], references: [enlace_id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@unique([mensaje_id, empresa_id], map: "uq_mensaje_empresa")
+  @@unique([empresa_id, folio], map: "uq_mensaje_folio")
+  @@index([empresa_id, sucursal_id, estado], map: "ix_mensaje_bandeja", where: raw("(direccion = 'recibido'::core.direccion_mensaje)"))
+  @@index([empresa_id, responde_a_folio], map: "ix_mensaje_hilo", where: raw("(responde_a_folio IS NOT NULL)"))
+  @@index([empresa_id, creado_en], map: "ix_mensaje_sin_entregar", where: raw("((direccion = 'enviado'::core.direccion_mensaje) AND (estado = 'pendiente'::core.estado_mensaje))"))
+  @@schema("core")
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model paciente {
+  paciente_id                                                   BigInt                @id @default(autoincrement())
+  empresa_id                                                    BigInt
+  expediente                                                    String
+  nombres                                                       String
+  apellidos                                                     String
+  nombre_completo                                               String?               @default(dbgenerated("((apellidos || ', '::text) || nombres)"))
+  tipo_documento                                                tipo_documento        @default(ninguno)
+  documento                                                     String?
+  fecha_nacimiento                                              DateTime?             @db.Date
+  sexo                                                          sexo                  @default(no_especificado)
+  telefono                                                      String?
+  correo                                                        String?
+  direccion                                                     String?
+  fusionado_en_paciente_id                                      BigInt?
+  fusionado_en                                                  DateTime?             @db.Timestamptz(6)
+  fusionado_por_usuario_id                                      BigInt?
+  creado_por_usuario_id                                         BigInt?
+  creado_en                                                     DateTime              @default(now()) @db.Timestamptz(6)
+  episodio                                                      episodio[]
+  usuario_paciente_creado_por_usuario_id_empresa_idTousuario    usuario?              @relation("paciente_creado_por_usuario_id_empresa_idTousuario", fields: [creado_por_usuario_id, empresa_id], references: [usuario_id, empresa_id], onDelete: NoAction, onUpdate: NoAction, map: "fk_paciente_creado_por")
+  usuario_paciente_fusionado_por_usuario_id_empresa_idTousuario usuario?              @relation("paciente_fusionado_por_usuario_id_empresa_idTousuario", fields: [fusionado_por_usuario_id, empresa_id], references: [usuario_id, empresa_id], onDelete: NoAction, onUpdate: NoAction, map: "fk_paciente_fusionado_por")
+  empresa                                                       empresa               @relation(fields: [empresa_id], references: [empresa_id], onDelete: NoAction, onUpdate: NoAction)
+  paciente                                                      paciente?             @relation("pacienteTopaciente", fields: [fusionado_en_paciente_id], references: [paciente_id], onDelete: NoAction, onUpdate: NoAction)
+  other_paciente                                                paciente[]            @relation("pacienteTopaciente")
+  paciente_referencia                                           paciente_referencia[]
+
+  @@unique([empresa_id, tipo_documento, documento], map: "uq_paciente_documento", where: raw("((documento IS NOT NULL) AND (fusionado_en_paciente_id IS NULL))"))
+  @@unique([paciente_id, empresa_id], map: "uq_paciente_empresa")
+  @@unique([empresa_id, expediente], map: "uq_paciente_expediente")
+  @@index([empresa_id, nombre_completo], map: "ix_paciente_nombre", where: raw("(fusionado_en_paciente_id IS NULL)"))
+  @@schema("core")
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model paciente_referencia {
+  referencia_id                                               BigInt    @id @default(autoincrement())
+  empresa_id                                                  BigInt
+  paciente_id                                                 BigInt
+  contraparte_empresa_id                                      BigInt
+  expediente_externo                                          String
+  confirmado_por_usuario_id                                   BigInt
+  confirmado_en                                               DateTime  @default(now()) @db.Timestamptz(6)
+  nota                                                        String?
+  anulada_en                                                  DateTime? @db.Timestamptz(6)
+  anulado_motivo                                              String?
+  paciente                                                    paciente  @relation(fields: [paciente_id, empresa_id], references: [paciente_id, empresa_id], onDelete: NoAction, onUpdate: NoAction, map: "fk_referencia_paciente")
+  usuario                                                     usuario   @relation(fields: [confirmado_por_usuario_id, empresa_id], references: [usuario_id, empresa_id], onDelete: NoAction, onUpdate: NoAction, map: "fk_referencia_usuario")
+  empresa_paciente_referencia_contraparte_empresa_idToempresa empresa   @relation("paciente_referencia_contraparte_empresa_idToempresa", fields: [contraparte_empresa_id], references: [empresa_id], onDelete: NoAction, onUpdate: NoAction)
+  empresa_paciente_referencia_empresa_idToempresa             empresa   @relation("paciente_referencia_empresa_idToempresa", fields: [empresa_id], references: [empresa_id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@unique([referencia_id, empresa_id], map: "uq_paciente_referencia")
+  @@unique([empresa_id, paciente_id, contraparte_empresa_id], map: "uq_referencia_vigente", where: raw("(anulada_en IS NULL)"))
+  @@index([empresa_id, contraparte_empresa_id, expediente_externo], map: "ix_referencia_externa", where: raw("(anulada_en IS NULL)"))
+  @@schema("core")
+}
+
+/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model rol {
+  rol_id      BigInt        @id @default(autoincrement())
+  empresa_id  BigInt
+  nombre      String
+  descripcion String?
+  es_sistema  Boolean       @default(false)
+  empresa     empresa       @relation(fields: [empresa_id], references: [empresa_id], onDelete: NoAction, onUpdate: NoAction)
+  rol_permiso rol_permiso[]
+  usuario     usuario[]
+
+  @@unique([rol_id, empresa_id], map: "uq_rol_empresa")
+  @@unique([empresa_id, nombre], map: "uq_rol_nombre")
+  @@schema("core")
+}
+
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model rol_permiso {
+  rol_id     BigInt
+  permiso_id String
+  empresa_id BigInt
+  rol        rol     @relation(fields: [rol_id, empresa_id], references: [rol_id, empresa_id], onDelete: NoAction, onUpdate: NoAction, map: "fk_rol_permiso_rol")
+  empresa    empresa @relation(fields: [empresa_id], references: [empresa_id], onDelete: NoAction, onUpdate: NoAction)
+  permiso    permiso @relation(fields: [permiso_id], references: [permiso_id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@id([rol_id, permiso_id])
+  @@schema("core")
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model sucursal {
+  sucursal_id                                        BigInt            @id @default(autoincrement())
+  empresa_id                                         BigInt
+  nombre                                             String
+  codigo                                             String
+  direccion                                          String?
+  telefono                                           String?
+  activo                                             Boolean           @default(true)
+  creado_en                                          DateTime          @default(now()) @db.Timestamptz(6)
+  acceso_sucursal                                    acceso_sucursal[]
+  correlativo                                        correlativo[]
+  episodio                                           episodio[]
+  mensaje                                            mensaje[]
+  empresa                                            empresa           @relation(fields: [empresa_id], references: [empresa_id], onDelete: NoAction, onUpdate: NoAction)
+  equipo                                             equipo[]
+  mensaje_crudo                                      mensaje_crudo[]
+  precio_prueba                                      precio_prueba[]
+  enlace_enlace_sucursal_a_id_empresa_a_idTosucursal enlace[]          @relation("enlace_sucursal_a_id_empresa_a_idTosucursal")
+  enlace_enlace_sucursal_b_id_empresa_b_idTosucursal enlace[]          @relation("enlace_sucursal_b_id_empresa_b_idTosucursal")
+  modulo_sucursal                                    modulo_sucursal[]
+
+  @@unique([empresa_id, codigo], map: "uq_sucursal_codigo")
+  @@unique([sucursal_id, empresa_id], map: "uq_sucursal_empresa")
+  @@unique([empresa_id, nombre], map: "uq_sucursal_nombre")
+  @@schema("core")
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+/// This model contains an expression index which requires additional setup for migrations. Visit https://pris.ly/d/expression-indexes for more info.
+model usuario {
+  usuario_id                                                     BigInt                @id @default(autoincrement())
+  empresa_id                                                     BigInt
+  empleado_id                                                    BigInt                @unique(map: "uq_usuario_empleado")
+  rol_id                                                         BigInt
+  username                                                       String
+  password_hash                                                  String
+  estado                                                         estado_usuario        @default(activo)
+  intentos_fallidos                                              Int                   @default(0) @db.SmallInt
+  ultimo_acceso_en                                               DateTime?             @db.Timestamptz(6)
+  creado_en                                                      DateTime              @default(now()) @db.Timestamptz(6)
+  acceso_sucursal                                                acceso_sucursal[]
+  entrega                                                        entrega[]
+  episodio                                                       episodio[]
+  informe_version                                                informe_version[]
+  paciente_paciente_creado_por_usuario_id_empresa_idTousuario    paciente[]            @relation("paciente_creado_por_usuario_id_empresa_idTousuario")
+  paciente_paciente_fusionado_por_usuario_id_empresa_idTousuario paciente[]            @relation("paciente_fusionado_por_usuario_id_empresa_idTousuario")
+  paciente_referencia                                            paciente_referencia[]
+  empleado                                                       empleado              @relation(fields: [empleado_id, empresa_id], references: [empleado_id, empresa_id], onDelete: NoAction, onUpdate: NoAction, map: "fk_usuario_empleado")
+  rol                                                            rol                   @relation(fields: [rol_id, empresa_id], references: [rol_id, empresa_id], onDelete: NoAction, onUpdate: NoAction, map: "fk_usuario_rol")
+  empresa                                                        empresa               @relation(fields: [empresa_id], references: [empresa_id], onDelete: NoAction, onUpdate: NoAction)
+  aviso_valor_critico                                            aviso_valor_critico[]
+  muestra_muestra_recibida_por_usuario_id_empresa_idTousuario    muestra[]             @relation("muestra_recibida_por_usuario_id_empresa_idTousuario")
+  muestra_muestra_tomada_por_usuario_id_empresa_idTousuario      muestra[]             @relation("muestra_tomada_por_usuario_id_empresa_idTousuario")
+  muestra_rechazo                                                muestra_rechazo[]
+  orden                                                          orden[]
+  resultado                                                      resultado[]
+
+  @@unique([usuario_id, empresa_id], map: "uq_usuario_empresa")
+  @@schema("core")
+}
+
+/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model equipo {
+  equipo_id     BigInt          @id @default(autoincrement())
+  empresa_id    BigInt
+  sucursal_id   BigInt
+  area_id       BigInt?
+  codigo        String
+  nombre        String
+  marca         String?
+  modelo        String?
+  serie         String?
+  protocolo     protocolo
+  identificador String
+  bidireccional Boolean         @default(false)
+  activo        Boolean         @default(true)
+  creado_en     DateTime        @default(now()) @db.Timestamptz(6)
+  empresa       empresa         @relation(fields: [empresa_id], references: [empresa_id], onDelete: NoAction, onUpdate: NoAction)
+  area          area?           @relation(fields: [area_id, empresa_id], references: [area_id, empresa_id], onDelete: NoAction, onUpdate: NoAction, map: "fk_equipo_area")
+  sucursal      sucursal        @relation(fields: [sucursal_id, empresa_id], references: [sucursal_id, empresa_id], onDelete: NoAction, onUpdate: NoAction, map: "fk_equipo_sucursal")
+  mapeo_codigo  mapeo_codigo[]
+  mensaje_crudo mensaje_crudo[]
+  resultado     resultado[]
+
+  @@unique([empresa_id, codigo], map: "uq_equipo_codigo")
+  @@unique([equipo_id, empresa_id], map: "uq_equipo_empresa")
+  @@unique([empresa_id, identificador], map: "uq_equipo_identificador")
+  @@schema("integra")
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model intento_proceso {
+  intento_proceso_id BigInt        @id @default(autoincrement())
+  empresa_id         BigInt
+  mensaje_crudo_id   BigInt
+  numero_intento     Int           @db.SmallInt
+  exito              Boolean
+  error              String?
+  detalle            Json?
+  intentado_en       DateTime      @default(now()) @db.Timestamptz(6)
+  mensaje_crudo      mensaje_crudo @relation(fields: [mensaje_crudo_id, empresa_id], references: [mensaje_crudo_id, empresa_id], onDelete: NoAction, onUpdate: NoAction, map: "fk_intento_mensaje")
+  empresa            empresa       @relation(fields: [empresa_id], references: [empresa_id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@unique([mensaje_crudo_id, numero_intento], map: "uq_intento")
+  @@schema("integra")
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model mapeo_codigo {
+  mapeo_codigo_id BigInt  @id @default(autoincrement())
+  empresa_id      BigInt
+  equipo_id       BigInt
+  codigo_equipo   String
+  analito_id      BigInt
+  factor          Decimal @default(1) @db.Decimal(12, 6)
+  unidad_equipo   String?
+  activo          Boolean @default(true)
+  analito         analito @relation(fields: [analito_id, empresa_id], references: [analito_id, empresa_id], onDelete: NoAction, onUpdate: NoAction, map: "fk_mapeo_analito")
+  equipo          equipo  @relation(fields: [equipo_id, empresa_id], references: [equipo_id, empresa_id], onDelete: NoAction, onUpdate: NoAction, map: "fk_mapeo_equipo")
+  empresa         empresa @relation(fields: [empresa_id], references: [empresa_id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@unique([equipo_id, codigo_equipo], map: "uq_mapeo_codigo")
+  @@schema("integra")
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model mensaje_crudo {
+  mensaje_crudo_id      BigInt                 @id @default(autoincrement())
+  empresa_id            BigInt
+  sucursal_id           BigInt
+  equipo_id             BigInt?
+  protocolo             protocolo
+  contenido             String
+  contenido_hash        String
+  identificador_equipo  String?
+  identificador_muestra String?
+  estado                integra_estado_mensaje @default(pendiente)
+  intentos              Int                    @default(0) @db.SmallInt
+  ultimo_error          String?
+  recibido_en           DateTime               @db.Timestamptz(6)
+  recibido_nube_en      DateTime               @default(now()) @db.Timestamptz(6)
+  procesado_en          DateTime?              @db.Timestamptz(6)
+  intento_proceso       intento_proceso[]
+  equipo                equipo?                @relation(fields: [equipo_id, empresa_id], references: [equipo_id, empresa_id], onDelete: NoAction, onUpdate: NoAction, map: "fk_mensaje_equipo")
+  sucursal              sucursal               @relation(fields: [sucursal_id, empresa_id], references: [sucursal_id, empresa_id], onDelete: NoAction, onUpdate: NoAction, map: "fk_mensaje_sucursal")
+  empresa               empresa                @relation(fields: [empresa_id], references: [empresa_id], onDelete: NoAction, onUpdate: NoAction)
+  resultado             resultado[]
+
+  @@unique([mensaje_crudo_id, empresa_id], map: "uq_mensaje_empresa")
+  @@unique([empresa_id, contenido_hash], map: "uq_mensaje_hash")
+  @@index([empresa_id, identificador_muestra], map: "ix_mensaje_muestra", where: raw("(identificador_muestra IS NOT NULL)"))
+  @@index([empresa_id, recibido_en], map: "ix_mensaje_pendiente", where: raw("(estado = ANY (ARRAY['pendiente'::integra.estado_mensaje, 'fallido'::integra.estado_mensaje]))"))
+  @@schema("integra")
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model analito {
+  analito_id       BigInt             @id @default(autoincrement())
+  empresa_id       BigInt
+  area_id          BigInt
+  codigo           String
+  nombre           String
+  abreviatura      String?
+  tipo_valor       tipo_valor         @default(numerico)
+  unidad           String?
+  decimales        Int                @default(2) @db.SmallInt
+  opciones         String[]
+  loinc            String?
+  activo           Boolean            @default(true)
+  mapeo_codigo     mapeo_codigo[]
+  empresa          empresa            @relation(fields: [empresa_id], references: [empresa_id], onDelete: NoAction, onUpdate: NoAction)
+  area             area               @relation(fields: [area_id, empresa_id], references: [area_id, empresa_id], onDelete: NoAction, onUpdate: NoAction, map: "fk_analito_area")
+  prueba_analito   prueba_analito[]
+  rango_referencia rango_referencia[]
+  resultado        resultado[]
+
+  @@unique([empresa_id, codigo], map: "uq_analito_codigo")
+  @@unique([analito_id, empresa_id], map: "uq_analito_empresa")
+  @@schema("lab")
+}
+
+/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model area {
+  area_id            BigInt    @id @default(autoincrement())
+  empresa_id         BigInt
+  codigo             String
+  nombre             String
+  orden_presentacion Int       @default(0) @db.SmallInt
+  activo             Boolean   @default(true)
+  equipo             equipo[]
+  analito            analito[]
+  empresa            empresa   @relation(fields: [empresa_id], references: [empresa_id], onDelete: NoAction, onUpdate: NoAction)
+  prueba             prueba[]
+
+  @@unique([empresa_id, codigo], map: "uq_area_codigo")
+  @@unique([area_id, empresa_id], map: "uq_area_empresa")
+  @@schema("lab")
+}
+
+/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model aviso_valor_critico {
+  aviso_id               BigInt      @id @default(autoincrement())
+  empresa_id             BigInt
+  resultado_id           BigInt
+  avisado_a              String
+  cargo                  String?
+  medio                  medio_aviso
+  mensaje                String?
+  confirmado             Boolean     @default(false)
+  avisado_por_usuario_id BigInt
+  avisado_en             DateTime    @default(now()) @db.Timestamptz(6)
+  empresa                empresa     @relation(fields: [empresa_id], references: [empresa_id], onDelete: NoAction, onUpdate: NoAction)
+  resultado              resultado   @relation(fields: [resultado_id, empresa_id], references: [resultado_id, empresa_id], onDelete: NoAction, onUpdate: NoAction, map: "fk_aviso_resultado")
+  usuario                usuario     @relation(fields: [avisado_por_usuario_id, empresa_id], references: [usuario_id, empresa_id], onDelete: NoAction, onUpdate: NoAction, map: "fk_aviso_usuario")
+
+  @@index([empresa_id, avisado_en(sort: Desc)], map: "ix_aviso_pendiente", where: raw("(NOT confirmado)"))
+  @@schema("lab")
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model muestra {
+  muestra_id                                                           BigInt            @id @default(autoincrement())
+  empresa_id                                                           BigInt
+  orden_id                                                             BigInt
+  tipo_muestra_id                                                      BigInt
+  codigo_barra                                                         String
+  estado                                                               estado_muestra    @default(pendiente)
+  volumen_ml                                                           Decimal?          @db.Decimal(5, 2)
+  tomada_en                                                            DateTime?         @db.Timestamptz(6)
+  tomada_por_usuario_id                                                BigInt?
+  recibida_en                                                          DateTime?         @db.Timestamptz(6)
+  recibida_por_usuario_id                                              BigInt?
+  observacion                                                          String?
+  orden                                                                orden             @relation(fields: [orden_id, empresa_id], references: [orden_id, empresa_id], onDelete: NoAction, onUpdate: NoAction, map: "fk_muestra_orden")
+  usuario_muestra_recibida_por_usuario_id_empresa_idTousuario          usuario?          @relation("muestra_recibida_por_usuario_id_empresa_idTousuario", fields: [recibida_por_usuario_id, empresa_id], references: [usuario_id, empresa_id], onDelete: NoAction, onUpdate: NoAction, map: "fk_muestra_recibida_por")
+  tipo_muestra                                                         tipo_muestra      @relation(fields: [tipo_muestra_id, empresa_id], references: [tipo_muestra_id, empresa_id], onDelete: NoAction, onUpdate: NoAction, map: "fk_muestra_tipo")
+  usuario_muestra_tomada_por_usuario_id_empresa_idTousuario            usuario?          @relation("muestra_tomada_por_usuario_id_empresa_idTousuario", fields: [tomada_por_usuario_id, empresa_id], references: [usuario_id, empresa_id], onDelete: NoAction, onUpdate: NoAction, map: "fk_muestra_tomada_por")
+  empresa                                                              empresa           @relation(fields: [empresa_id], references: [empresa_id], onDelete: NoAction, onUpdate: NoAction)
+  muestra_rechazo_muestra_rechazo_muestra_id_empresa_idTomuestra       muestra_rechazo[] @relation("muestra_rechazo_muestra_id_empresa_idTomuestra")
+  muestra_rechazo_muestra_rechazo_nueva_muestra_id_empresa_idTomuestra muestra_rechazo[] @relation("muestra_rechazo_nueva_muestra_id_empresa_idTomuestra")
+  orden_prueba                                                         orden_prueba[]
+  resultado                                                            resultado[]
+
+  @@unique([empresa_id, codigo_barra], map: "uq_muestra_codigo")
+  @@unique([muestra_id, empresa_id], map: "uq_muestra_empresa")
+  @@index([empresa_id, orden_id], map: "ix_muestra_orden")
+  @@index([empresa_id, estado, tomada_en], map: "ix_muestra_pendientes", where: raw("(estado = ANY (ARRAY['tomada'::lab.estado_muestra, 'recibida'::lab.estado_muestra, 'en_proceso'::lab.estado_muestra]))"))
+  @@schema("lab")
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model muestra_rechazo {
+  muestra_rechazo_id                                           BigInt         @id @default(autoincrement())
+  empresa_id                                                   BigInt
+  muestra_id                                                   BigInt
+  motivo                                                       motivo_rechazo
+  detalle                                                      String?
+  nueva_muestra_id                                             BigInt?
+  rechazada_por_usuario_id                                     BigInt
+  rechazada_en                                                 DateTime       @default(now()) @db.Timestamptz(6)
+  muestra_muestra_rechazo_muestra_id_empresa_idTomuestra       muestra        @relation("muestra_rechazo_muestra_id_empresa_idTomuestra", fields: [muestra_id, empresa_id], references: [muestra_id, empresa_id], onDelete: NoAction, onUpdate: NoAction, map: "fk_rechazo_muestra")
+  muestra_muestra_rechazo_nueva_muestra_id_empresa_idTomuestra muestra?       @relation("muestra_rechazo_nueva_muestra_id_empresa_idTomuestra", fields: [nueva_muestra_id, empresa_id], references: [muestra_id, empresa_id], onDelete: NoAction, onUpdate: NoAction, map: "fk_rechazo_nueva")
+  usuario                                                      usuario        @relation(fields: [rechazada_por_usuario_id, empresa_id], references: [usuario_id, empresa_id], onDelete: NoAction, onUpdate: NoAction, map: "fk_rechazo_usuario")
+  empresa                                                      empresa        @relation(fields: [empresa_id], references: [empresa_id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@schema("lab")
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model orden {
+  orden_id              BigInt         @id @default(autoincrement())
+  empresa_id            BigInt
+  episodio_id           BigInt         @unique(map: "uq_orden_episodio")
+  informe_id            BigInt?
+  numero                String
+  estado                estado_orden   @default(solicitada)
+  urgente               Boolean        @default(false)
+  ayuno                 Boolean?
+  observacion           String?
+  anulado_motivo        String?
+  creado_por_usuario_id BigInt
+  creado_en             DateTime       @default(now()) @db.Timestamptz(6)
+  muestra               muestra[]
+  episodio              episodio       @relation(fields: [episodio_id, empresa_id], references: [episodio_id, empresa_id], onDelete: NoAction, onUpdate: NoAction, map: "fk_orden_episodio")
+  informe               informe?       @relation(fields: [informe_id, empresa_id], references: [informe_id, empresa_id], onDelete: NoAction, onUpdate: NoAction, map: "fk_orden_informe")
+  usuario               usuario        @relation(fields: [creado_por_usuario_id, empresa_id], references: [usuario_id, empresa_id], onDelete: NoAction, onUpdate: NoAction, map: "fk_orden_usuario")
+  empresa               empresa        @relation(fields: [empresa_id], references: [empresa_id], onDelete: NoAction, onUpdate: NoAction)
+  orden_prueba          orden_prueba[]
+
+  @@unique([orden_id, empresa_id], map: "uq_orden_empresa")
+  @@unique([empresa_id, numero], map: "uq_orden_numero")
+  @@index([empresa_id, estado, urgente(sort: Desc), creado_en], map: "ix_orden_bandeja", where: raw("(estado <> ALL (ARRAY['entregada'::lab.estado_orden, 'anulada'::lab.estado_orden]))"))
+  @@schema("lab")
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model orden_prueba {
+  orden_prueba_id BigInt      @id @default(autoincrement())
+  empresa_id      BigInt
+  orden_id        BigInt
+  prueba_id       BigInt
+  muestra_id      BigInt?
+  precio_lista    Decimal     @db.Decimal(12, 2)
+  precio          Decimal     @db.Decimal(12, 2)
+  convenio_id     BigInt
+  anulado_en      DateTime?   @db.Timestamptz(6)
+  anulado_motivo  String?
+  convenio        convenio    @relation(fields: [convenio_id, empresa_id], references: [convenio_id, empresa_id], onDelete: NoAction, onUpdate: NoAction, map: "fk_orden_prueba_convenio")
+  muestra         muestra?    @relation(fields: [muestra_id, empresa_id], references: [muestra_id, empresa_id], onDelete: NoAction, onUpdate: NoAction, map: "fk_orden_prueba_muestra")
+  orden           orden       @relation(fields: [orden_id, empresa_id], references: [orden_id, empresa_id], onDelete: NoAction, onUpdate: NoAction, map: "fk_orden_prueba_orden")
+  prueba          prueba      @relation(fields: [prueba_id, empresa_id], references: [prueba_id, empresa_id], onDelete: NoAction, onUpdate: NoAction, map: "fk_orden_prueba_prueba")
+  empresa         empresa     @relation(fields: [empresa_id], references: [empresa_id], onDelete: NoAction, onUpdate: NoAction)
+  resultado       resultado[]
+
+  @@unique([orden_prueba_id, empresa_id], map: "uq_orden_prueba_empresa")
+  @@unique([orden_id, prueba_id], map: "uq_orden_prueba_unica")
+  @@index([empresa_id, orden_id], map: "ix_orden_prueba_orden")
+  @@schema("lab")
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+/// This model contains an expression index which requires additional setup for migrations. Visit https://pris.ly/d/expression-indexes for more info.
+model precio_prueba {
+  precio_prueba_id BigInt    @id @default(autoincrement())
+  empresa_id       BigInt
+  prueba_id        BigInt
+  sucursal_id      BigInt?
+  convenio_id      BigInt?
+  precio           Decimal   @db.Decimal(12, 2)
+  vigente_desde    DateTime  @default(dbgenerated("CURRENT_DATE")) @db.Date
+  vigente_hasta    DateTime? @db.Date
+  convenio         convenio? @relation(fields: [convenio_id, empresa_id], references: [convenio_id, empresa_id], onDelete: NoAction, onUpdate: NoAction, map: "fk_precio_convenio")
+  prueba           prueba    @relation(fields: [prueba_id, empresa_id], references: [prueba_id, empresa_id], onDelete: NoAction, onUpdate: NoAction, map: "fk_precio_prueba")
+  sucursal         sucursal? @relation(fields: [sucursal_id, empresa_id], references: [sucursal_id, empresa_id], onDelete: NoAction, onUpdate: NoAction, map: "fk_precio_sucursal")
+  empresa          empresa   @relation(fields: [empresa_id], references: [empresa_id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@index([empresa_id, prueba_id, vigente_desde(sort: Desc)], map: "ix_precio_busqueda")
+  @@schema("lab")
+}
+
+/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model prueba {
+  prueba_id       BigInt           @id @default(autoincrement())
+  empresa_id      BigInt
+  area_id         BigInt
+  tipo_muestra_id BigInt
+  codigo          String
+  nombre          String
+  metodo          String?
+  horas_proceso   Int              @default(24) @db.SmallInt
+  requiere_ayuno  Boolean          @default(false)
+  indicaciones    String?
+  activo          Boolean          @default(true)
+  creado_en       DateTime         @default(now()) @db.Timestamptz(6)
+  orden_prueba    orden_prueba[]
+  precio_prueba   precio_prueba[]
+  area            area             @relation(fields: [area_id, empresa_id], references: [area_id, empresa_id], onDelete: NoAction, onUpdate: NoAction, map: "fk_prueba_area")
+  tipo_muestra    tipo_muestra     @relation(fields: [tipo_muestra_id, empresa_id], references: [tipo_muestra_id, empresa_id], onDelete: NoAction, onUpdate: NoAction, map: "fk_prueba_tipo_muestra")
+  empresa         empresa          @relation(fields: [empresa_id], references: [empresa_id], onDelete: NoAction, onUpdate: NoAction)
+  prueba_analito  prueba_analito[]
+
+  @@unique([empresa_id, codigo], map: "uq_prueba_codigo")
+  @@unique([prueba_id, empresa_id], map: "uq_prueba_empresa")
+  @@schema("lab")
+}
+
+/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model prueba_analito {
+  prueba_id          BigInt
+  analito_id         BigInt
+  empresa_id         BigInt
+  orden_presentacion Int     @default(0) @db.SmallInt
+  calculado          Boolean @default(false)
+  analito            analito @relation(fields: [analito_id, empresa_id], references: [analito_id, empresa_id], onDelete: NoAction, onUpdate: NoAction, map: "fk_prueba_analito_analito")
+  prueba             prueba  @relation(fields: [prueba_id, empresa_id], references: [prueba_id, empresa_id], onDelete: NoAction, onUpdate: NoAction, map: "fk_prueba_analito_prueba")
+  empresa            empresa @relation(fields: [empresa_id], references: [empresa_id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@id([prueba_id, analito_id])
+  @@schema("lab")
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model rango_referencia {
+  rango_referencia_id BigInt     @id @default(autoincrement())
+  empresa_id          BigInt
+  analito_id          BigInt
+  sexo                sexo_rango @default(ambos)
+  edad_min_dias       Int        @default(0)
+  edad_max_dias       Int        @default(54750)
+  valor_min           Decimal?   @db.Decimal(14, 4)
+  valor_max           Decimal?   @db.Decimal(14, 4)
+  critico_min         Decimal?   @db.Decimal(14, 4)
+  critico_max         Decimal?   @db.Decimal(14, 4)
+  metodo              String?
+  texto_libre         String?
+  vigente_desde       DateTime   @default(dbgenerated("CURRENT_DATE")) @db.Date
+  vigente_hasta       DateTime?  @db.Date
+  analito             analito    @relation(fields: [analito_id, empresa_id], references: [analito_id, empresa_id], onDelete: NoAction, onUpdate: NoAction, map: "fk_rango_analito")
+  empresa             empresa    @relation(fields: [empresa_id], references: [empresa_id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@index([empresa_id, analito_id, sexo, edad_min_dias], map: "ix_rango_analito")
+  @@schema("lab")
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model resultado {
+  resultado_id             BigInt                @id @default(autoincrement())
+  empresa_id               BigInt
+  orden_prueba_id          BigInt
+  analito_id               BigInt
+  muestra_id               BigInt?
+  valor_numerico           Decimal?              @db.Decimal(14, 4)
+  valor_texto              String?
+  unidad                   String?
+  rango_min                Decimal?              @db.Decimal(14, 4)
+  rango_max                Decimal?              @db.Decimal(14, 4)
+  rango_texto              String?
+  critico_min              Decimal?              @db.Decimal(14, 4)
+  critico_max              Decimal?              @db.Decimal(14, 4)
+  bandera                  bandera               @default(normal)
+  estado                   estado_resultado      @default(pendiente)
+  metodo                   String?
+  equipo_id                BigInt?
+  mensaje_crudo_id         BigInt?
+  medido_en                DateTime?             @db.Timestamptz(6)
+  capturado_por_usuario_id BigInt?
+  validado_por_usuario_id  BigInt?
+  validado_en              DateTime?             @db.Timestamptz(6)
+  vigente                  Boolean               @default(true)
+  corrige_a_resultado_id   BigInt?
+  motivo_correccion        String?
+  observacion              String?
+  creado_en                DateTime              @default(now()) @db.Timestamptz(6)
+  aviso_valor_critico      aviso_valor_critico[]
+  analito                  analito               @relation(fields: [analito_id, empresa_id], references: [analito_id, empresa_id], onDelete: NoAction, onUpdate: NoAction, map: "fk_resultado_analito")
+  equipo                   equipo?               @relation(fields: [equipo_id, empresa_id], references: [equipo_id, empresa_id], onDelete: NoAction, onUpdate: NoAction, map: "fk_resultado_equipo")
+  mensaje_crudo            mensaje_crudo?        @relation(fields: [mensaje_crudo_id, empresa_id], references: [mensaje_crudo_id, empresa_id], onDelete: NoAction, onUpdate: NoAction, map: "fk_resultado_mensaje")
+  muestra                  muestra?              @relation(fields: [muestra_id, empresa_id], references: [muestra_id, empresa_id], onDelete: NoAction, onUpdate: NoAction, map: "fk_resultado_muestra")
+  orden_prueba             orden_prueba          @relation(fields: [orden_prueba_id, empresa_id], references: [orden_prueba_id, empresa_id], onDelete: NoAction, onUpdate: NoAction, map: "fk_resultado_orden_prueba")
+  usuario                  usuario?              @relation(fields: [validado_por_usuario_id, empresa_id], references: [usuario_id, empresa_id], onDelete: NoAction, onUpdate: NoAction, map: "fk_resultado_validado_por")
+  resultado                resultado?            @relation("resultadoToresultado", fields: [corrige_a_resultado_id], references: [resultado_id], onDelete: NoAction, onUpdate: NoAction)
+  other_resultado          resultado[]           @relation("resultadoToresultado")
+  empresa                  empresa               @relation(fields: [empresa_id], references: [empresa_id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@unique([resultado_id, empresa_id], map: "uq_resultado_empresa")
+  @@unique([orden_prueba_id, analito_id], map: "uq_resultado_vigente", where: raw("vigente"))
+  @@index([empresa_id, analito_id, medido_en(sort: Desc), valor_numerico, bandera], map: "ix_resultado_analito_valor", where: raw("vigente"))
+  @@index([empresa_id, estado, creado_en], map: "ix_resultado_por_validar", where: raw("((estado = 'preliminar'::lab.estado_resultado) AND vigente)"))
+  @@schema("lab")
+}
+
+/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model tipo_muestra {
+  tipo_muestra_id BigInt    @id @default(autoincrement())
+  empresa_id      BigInt
+  codigo          String
+  nombre          String
+  color_tapon     String?
+  anticoagulante  String?
+  volumen_min_ml  Decimal?  @db.Decimal(5, 2)
+  estable_horas   Int?      @db.SmallInt
+  activo          Boolean   @default(true)
+  muestra         muestra[]
+  prueba          prueba[]
+  empresa         empresa   @relation(fields: [empresa_id], references: [empresa_id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@unique([empresa_id, codigo], map: "uq_tipo_muestra_codigo")
+  @@unique([tipo_muestra_id, empresa_id], map: "uq_tipo_muestra_empresa")
+  @@schema("lab")
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+/// This model contains an expression index which requires additional setup for migrations. Visit https://pris.ly/d/expression-indexes for more info.
+model enlace {
+  enlace_id                                            BigInt    @id @default(autoincrement())
+  empresa_a_id                                         BigInt
+  sucursal_a_id                                        BigInt
+  empresa_b_id                                         BigInt
+  sucursal_b_id                                        BigInt
+  vigente_desde                                        DateTime  @default(dbgenerated("CURRENT_DATE")) @db.Date
+  vigente_hasta                                        DateTime? @db.Date
+  creado_por                                           String
+  nota                                                 String?
+  mensaje                                              mensaje[]
+  sucursal_enlace_sucursal_a_id_empresa_a_idTosucursal sucursal  @relation("enlace_sucursal_a_id_empresa_a_idTosucursal", fields: [sucursal_a_id, empresa_a_id], references: [sucursal_id, empresa_id], onDelete: NoAction, onUpdate: NoAction, map: "fk_enlace_sucursal_a")
+  sucursal_enlace_sucursal_b_id_empresa_b_idTosucursal sucursal  @relation("enlace_sucursal_b_id_empresa_b_idTosucursal", fields: [sucursal_b_id, empresa_b_id], references: [sucursal_id, empresa_id], onDelete: NoAction, onUpdate: NoAction, map: "fk_enlace_sucursal_b")
+
+  @@index([empresa_a_id, sucursal_a_id], map: "ix_enlace_a", where: raw("(vigente_hasta IS NULL)"))
+  @@index([empresa_b_id, sucursal_b_id], map: "ix_enlace_b", where: raw("(vigente_hasta IS NULL)"))
+  @@schema("plataforma")
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+model modulo {
+  modulo_id       String            @id
+  nombre          String
+  descripcion     String?
+  informe         informe[]
+  modulo_sucursal modulo_sucursal[]
+  permiso         permiso[]
+
+  @@schema("plataforma")
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model modulo_sucursal {
+  sucursal_id    BigInt
+  modulo_id      String
+  empresa_id     BigInt
+  activo         Boolean   @default(true)
+  activado_en    DateTime  @default(now()) @db.Timestamptz(6)
+  desactivado_en DateTime? @db.Timestamptz(6)
+  asignado_por   String
+  sucursal       sucursal  @relation(fields: [sucursal_id, empresa_id], references: [sucursal_id, empresa_id], onDelete: NoAction, onUpdate: NoAction, map: "fk_modulo_sucursal_sucursal")
+  empresa        empresa   @relation(fields: [empresa_id], references: [empresa_id], onDelete: NoAction, onUpdate: NoAction)
+  modulo         modulo    @relation(fields: [modulo_id], references: [modulo_id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@id([sucursal_id, modulo_id])
+  @@schema("plataforma")
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+model permiso {
+  permiso_id  String        @id
+  modulo_id   String
+  descripcion String
+  rol_permiso rol_permiso[]
+  modulo      modulo        @relation(fields: [modulo_id], references: [modulo_id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@schema("plataforma")
+}
+
+enum estado_derivacion {
+  solicitada
+  aceptada
+  rechazada
+  completada
+
+  @@schema("audit")
+}
+
+enum papel_contacto {
+  firma
+  pago
+  tecnico
+  general
+
+  @@schema("comercial")
+}
+
+enum tipo_cliente {
+  natural
+  juridica
+
+  @@schema("comercial")
+}
+
+enum tipo_evento {
+  alta
+  activacion
+  suspension
+  reactivacion
+  cancelacion
+  cierre
+
+  @@schema("comercial")
+}
+
+enum direccion_mensaje {
+  enviado
+  recibido
+
+  @@schema("core")
+}
+
+enum estado_empresa {
+  prueba
+  activa
+  suspendida
+  cancelada
+  cerrada
+
+  @@schema("core")
+}
+
+enum estado_episodio {
+  abierto
+  cerrado
+  anulado
+
+  @@schema("core")
+}
+
+enum estado_informe {
+  borrador
+  emitido
+  corregido
+  anulado
+
+  @@schema("core")
+}
+
+enum core_estado_mensaje {
+  pendiente
+  entregado
+  recibido
+  trabajado
+  descartado
+
+  @@map("estado_mensaje")
+  @@schema("core")
+}
+
+enum estado_usuario {
+  activo
+  suspendido
+  bloqueado
+
+  @@schema("core")
+}
+
+enum medio_entrega {
+  mostrador
+  correo
+  convenio
+
+  @@schema("core")
+}
+
+enum modalidad_cobro {
+  particular
+  credito_mensual
+  copago
+  reembolso
+
+  @@schema("core")
+}
+
+enum nivel_acceso {
+  completo
+  solo_cierre
+  solo_lectura
+  bloqueado
+
+  @@schema("core")
+}
+
+enum tipo_convenio {
+  particular
+  clinica
+  hospital
+  aseguradora
+  empresa
+  medico
+
+  @@schema("core")
+}
+
+enum tipo_correlativo {
+  expediente
+  episodio
+  informe
+  orden
+  muestra
+
+  @@schema("core")
+}
+
+enum tipo_mensaje {
+  solicitud
+  consulta_historial
+  respuesta_historial
+  resultado
+  correccion
+  aviso
+
+  @@schema("core")
+}
+
+enum integra_estado_mensaje {
+  pendiente
+  procesado
+  fallido
+  ignorado
+
+  @@map("estado_mensaje")
+  @@schema("integra")
+}
+
+enum protocolo {
+  hl7_v2
+  astm_e1394
+  propietario
+
+  @@schema("integra")
+}
+
+enum bandera {
+  normal
+  bajo
+  alto
+  critico_bajo
+  critico_alto
+  anormal
+
+  @@schema("lab")
+}
+
+enum estado_muestra {
+  pendiente
+  tomada
+  recibida
+  rechazada
+  en_proceso
+  procesada
+
+  @@schema("lab")
+}
+
+/// This enum is commented in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+enum estado_orden {
+  solicitada
+  muestra_tomada
+  recibida
+  en_proceso
+  resultados_parciales
+  validada
+  entregada
+  anulada
+
+  @@schema("lab")
+}
+
+enum estado_resultado {
+  pendiente
+  preliminar
+  validado
+  corregido
+  repetir
+
+  @@schema("lab")
+}
+
+enum medio_aviso {
+  telefono
+  presencial
+  correo
+  mensaje
+
+  @@schema("lab")
+}
+
+enum motivo_rechazo {
+  hemolisis
+  coagulo
+  volumen_insuficiente
+  mal_identificada
+  contaminada
+  tubo_incorrecto
+  muestra_vencida
+  derrame
+
+  @@schema("lab")
+}
+
+enum sexo_rango {
+  femenino
+  masculino
+  ambos
+
+  @@schema("lab")
+}
+
+enum tipo_valor {
+  numerico
+  texto
+  opcion
+  booleano
+
+  @@schema("lab")
+}
+
+/// This enum is commented in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+enum sexo {
+  femenino
+  masculino
+  no_especificado
+
+  @@schema("plataforma")
+}
+
+enum tipo_documento {
+  identidad
+  pasaporte
+  carnet_residencia
+  partida_nacimiento
+  ninguno
+
+  @@schema("plataforma")
+}

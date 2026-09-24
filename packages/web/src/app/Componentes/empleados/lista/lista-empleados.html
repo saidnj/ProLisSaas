@@ -1,0 +1,132 @@
+<app-encabezado />
+
+<div class="pagina">
+
+  <div class="cabecera">
+    <div>
+      <h1>Empleados</h1>
+      <p class="sub">
+        Las personas que trabajan en {{ sesion.nombreEmpresa() }}. Tengan o no
+        cuenta para entrar al sistema.
+      </p>
+    </div>
+
+    <div class="acciones">
+      @if (puedeAdministrar()) {
+        <a class="boton primario" routerLink="/empleados/nuevo">+ Nuevo empleado</a>
+      }
+    </div>
+  </div>
+
+  @if (error()) {
+    <p class="error-caja" role="alert">{{ error() }}</p>
+  }
+
+  <div class="panel">
+    <div class="barra-panel">
+      <input class="buscador" type="text" placeholder="Buscar por nombre, cargo, correo..."
+             [value]="busqueda()"
+             (input)="busqueda.set($any($event.target).value)" />
+
+      @if (inactivos() > 0) {
+        <label class="interruptor">
+          <input type="checkbox" [checked]="verInactivos()"
+                 (change)="verInactivos.set($any($event.target).checked)" />
+          Ver inactivos ({{ inactivos() }})
+        </label>
+      }
+
+      <span class="cuenta">{{ filtrados().length }} de {{ empleados().length }}</span>
+    </div>
+
+    @if (cargando()) {
+      <p class="cargando">Cargando empleados...</p>
+
+    } @else if (filtrados().length === 0) {
+      <div class="estado">
+        @if (empleados().length === 0) {
+          <strong>Todavia no hay empleados</strong>
+          <p>Empeza por registrar a la primera persona.</p>
+          @if (puedeAdministrar()) {
+            <a class="boton primario" routerLink="/empleados/nuevo">+ Nuevo empleado</a>
+          }
+        } @else {
+          <strong>Ningun empleado coincide</strong>
+          <p>Proba con otra palabra, o limpia la busqueda.</p>
+          <button type="button" class="boton suave" (click)="busqueda.set('')">Limpiar</button>
+        }
+      </div>
+
+    } @else {
+      <div class="tabla-envoltura">
+        <table class="tabla">
+          <thead>
+            <tr>
+              <th>Empleado</th>
+              <th>Cargo</th>
+              <th>Contacto</th>
+              <th>Colegiacion</th>
+              <th>Cuenta</th>
+              <th>Estado</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (e of filtrados(); track e.empleadoId) {
+              <tr>
+                <td>
+                  <div class="principal">{{ nombre(e) }}</div>
+                  @if (e.documento) {
+                    <div class="secundario">{{ e.documento }}</div>
+                  }
+                </td>
+
+                <td>{{ e.cargo ?? '—' }}</td>
+
+                <td>
+                  @if (e.correo) { <div>{{ e.correo }}</div> }
+                  @if (e.telefono) { <div class="secundario">{{ e.telefono }}</div> }
+                  @if (!e.correo && !e.telefono) { <span class="apagado">—</span> }
+                </td>
+
+                <td>
+                  @if (e.numeroColegiacion) {
+                    <span class="chip info">{{ e.numeroColegiacion }}</span>
+                  } @else {
+                    <span class="apagado">—</span>
+                  }
+                </td>
+
+                <td>
+                  @if (e.username) {
+                    <span class="secundario">{{ e.username }}</span>
+                  } @else {
+                    <span class="chip gris">sin cuenta</span>
+                  }
+                </td>
+
+                <td>
+                  @if (e.activo) {
+                    <span class="chip si">Activo</span>
+                  } @else {
+                    <span class="chip no">Inactivo</span>
+                  }
+                </td>
+
+                <td>
+                  <div class="acciones-fila">
+                    <a class="boton fantasma chico" [routerLink]="['/empleados', e.empleadoId]">Ver</a>
+                    @if (puedeEditar(e)) {
+                      <a class="boton suave chico"
+                         [routerLink]="['/empleados', e.empleadoId, 'editar']">Editar</a>
+                    }
+                  </div>
+                </td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+    }
+  </div>
+</div>

@@ -1,0 +1,17 @@
+# Fin de linea: LF en el repositorio y en el disco, en Windows tambien. Los
+# editores modernos lo respetan y asi un archivo no aparece "cambiado entero"
+# solo porque se abrio desde otro lado.
+* text=auto eol=lf
+
+# Lo que es de Windows y lo lee cmd
+*.bat text eol=crlf
+
+# Binarios: ni se normalizan ni se comparan linea a linea
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.ico binary
+*.pdf binary
+*.woff binary
+*.woff2 binary

@@ -1,0 +1,65 @@
+<div class="migas">
+  <a routerLink="/empleados">Empleados</a> <span>/</span> <span>Listo</span>
+</div>
+
+<div class="cabecera">
+  <div>
+    <!-- Sin genero: "creado/creada" obliga a saber si es hombre o mujer,
+         y el sistema no guarda eso ni tiene por que. "ya esta en el
+         sistema" sirve para cualquiera. -->
+    <h1>Listo</h1>
+    <p class="sub">
+      @switch (motivo()) {
+        @case ('nuevo') {
+          <strong>{{ nombre() }}</strong> ya esta en el sistema. Falta
+          entregarle su codigo para que estrene su clave.
+        }
+        @case ('reemplazo') {
+          <strong>{{ nombre() }}</strong> tiene un codigo nuevo. El anterior
+          ya no sirve.
+        }
+        @case ('restablecer') {
+          <strong>{{ nombre() }}</strong> quedo fuera del sistema: su clave se
+          borro y con este codigo estrena una nueva.
+        }
+      }
+    </p>
+  </div>
+</div>
+
+<div class="panel">
+  <div class="cuerpo">
+    <div class="codigo-caja">
+      <span class="etiqueta">Codigo de activacion</span>
+      <div class="codigo">{{ codigo() }}</div>
+      <button type="button" class="boton suave" (click)="copiar()">
+        {{ copiado() ? 'Copiado' : 'Copiar' }}
+      </button>
+    </div>
+
+    <p class="aviso-fuerte">
+      <strong>Este codigo no se vuelve a mostrar.</strong>
+      En la base solo queda su huella cifrada, asi que ni el sistema ni vos
+      pueden verlo otra vez. Si se pierde, hay que generar uno nuevo.
+    </p>
+
+    <ul class="pasos">
+      <li>Entregaselo en mano o por telefono.</li>
+      <li>Ella entra a <strong>Activar cuenta</strong> y pone su usuario, el codigo y la clave que quiera.</li>
+      <li>
+        @if (venceEn(); as v) {
+          Vence el <strong>{{ v | date:'d MMM, h:mm a' }}</strong>.
+        } @else {
+          Vence en 24 horas.
+        }
+        Hasta que lo use, la cuenta no puede entrar.
+      </li>
+    </ul>
+
+    <div class="pie-formulario">
+      <button type="button" class="boton primario" (click)="listo.emit()">
+        Listo, ya lo entregue
+      </button>
+    </div>
+  </div>
+</div>

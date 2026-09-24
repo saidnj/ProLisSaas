@@ -1,0 +1,25 @@
+// =====================================================================
+//  LOS COLORES Y MEDIDAS DEL SISTEMA, UNA SOLA VEZ.
+//
+//  Variables CSS en :root: las lee cualquier regla de cualquier archivo,
+//  global o de componente, sin importar nada. Cambiar el azul del sistema
+//  es cambiar una linea aqui.
+//
+//  El encabezado (la barra oscura de arriba) redefine algunas en su propio
+//  :host a proposito: ahi la tinta es clara sobre fondo oscuro. Es una
+//  excepcion local, no otra paleta.
+// =====================================================================
+
+:root {
+  --tinta:    #1c2333;   // texto principal
+  --suave:    #667085;   // texto secundario, pistas
+  --tenue:    #98a2b3;   // texto apagado, placeholders
+  --borde:    #dfe3ea;   // bordes de paneles, campos, tablas
+  --fondo:    #f4f6fa;   // fondo de la pagina
+  --panel:    #ffffff;   // fondo de paneles y tarjetas
+  --acento:   #1d4ed8;   // el azul: botones primarios, foco, enlaces
+  --acento-2: #eef3ff;   // el azul claro: fondos de seleccion
+  --peligro:  #b42318;   // errores
+  --bien:     #027a48;   // ok
+  --bien-2:   #ecfdf3;   // fondo de ok
+}
