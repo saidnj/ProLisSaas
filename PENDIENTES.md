@@ -12,15 +12,9 @@ suben de una vez.
    - Queda tuyo: `.claude/agents/revisor-esquema.md` apunta todavía a
      `db/schema` (dos líneas). Todo lo que está bajo `.claude/` lo editás y lo
      subís vos: las herramientas de la sesión no entran ahí.
-3. **Set "rendimiento"** — chico, plomería que usa todo módulo:
-   - `conSesion()`: rol y contexto en UNA sentencia
-     (`set_config('role','lis_app',true)` junto a los `lis.*`).
-   - `exigirPermiso()`: una consulta, no dos.
-   - pool de `pg` con tamaño explícito.
-   - filtro de errores: `P2028` (pool agotado) → 503, `40001`/`40P01`
-     (serialización / deadlock) → 409, `22P02` (texto inválido) → 400.
-   - de paso: `fijarSedes` y `rol-en-sedes` pasan el arreglo directo, no como
-     texto `'{...}'`.
+3. ~~Set "rendimiento"~~ — hecho (`fe641f4`): 7 → 5 idas por petición, pool
+   explícito con `DB_POOL_MAX`, `P2028` → 503, `40001`/`40P01` → 409,
+   `22P02`/`23502` → 400, arreglos directos, `.env.ejemplo`.
 4. **Set "ficha sensible"** — antes de la primera puesta en producción:
    identidad, teléfono, correo y colegiación de `core.empleado` solo con
    `usuario.administrar`, desde la base (privilegios por columna + vista o
