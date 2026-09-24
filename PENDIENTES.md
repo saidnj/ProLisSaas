@@ -37,7 +37,9 @@ suben de una vez.
   administrador no edita ni su propia ficha (la ficha sigue a la cuenta): se
   lo pide al propietario.
 - **Sucursales**: módulo de administrar (abrir, configurar, cerrar sedes), con
-  el mismo molde que empleados y roles. El catálogo ya existe.
+  el mismo molde que empleados y roles. El catálogo ya existe. **Antes hay que
+  decidir quién crea las sucursales: el propietario desde el LIS, o el operador
+  (como parte del contrato).** Hasta entonces, queda pendiente.
 - **Pacientes**: apenas empezado. Al armarlo: `exigirPermiso` en `listar` y
   paginación por cursor `(apellidos, nombres, paciente_id)`.
 - **Auditoría**: pantalla sobre `audit.evento`.
