@@ -18,6 +18,16 @@ import { Response } from 'express';
  *   23514  CHECK                    un CHECK de tabla                    -> 400
  *   23503  llave foranea            apunta a algo que no existe          -> 400
  *   55006  en uso                   desactivar un rol que alguien tiene  -> 409
+ *   40001  serializacion            dos transacciones se pisaron         -> 409 (reintentar)
+ *   40P01  deadlock                 idem, Postgres aborto una            -> 409 (reintentar)
+ *   22P02  texto invalido           un id que no es numero, un jsonb roto -> 400
+ *   23502  NOT NULL                 falta un dato obligatorio            -> 400
+ *
+ * Y uno que no es de Postgres sino de Prisma:
+ *
+ *   P2028  sin conexion libre       el pool esta lleno y se agoto maxWait -> 503
+ *          (no es un error del sistema: es saturacion; si aparece seguido,
+ *          subir DB_POOL_MAX o poner PgBouncer delante)
  *
  * Cualquier otra cosa es un 500 pelado: se registra entera del lado del
  * servidor y al cliente le va "Error interno". Un error de base sin filtrar
@@ -48,6 +58,17 @@ export class ErroresBaseFilter implements ExceptionFilter {
     // Lo que ya es una excepcion de Nest pasa de largo.
     if (exc instanceof HttpException) {
       return res.status(exc.getStatus()).json(exc.getResponse());
+    }
+
+    // Pool lleno: Prisma no llego ni a abrir la transaccion. Es saturacion,
+    // no un error de programa: 503 para que el front pueda decir "ocupado"
+    // y quien mira los logs sepa que es hora de mas conexiones.
+    if (this.codigoPrisma(exc) === 'P2028') {
+      this.log.warn('P2028 -> 503: el pool de conexiones esta lleno (DB_POOL_MAX)');
+      return res.status(HttpStatus.SERVICE_UNAVAILABLE).json({
+        statusCode: 503,
+        message: 'El sistema esta ocupado: intenta de nuevo en unos segundos',
+      });
     }
 
     const pg = this.leerErrorDePostgres(exc);
@@ -107,6 +128,24 @@ export class ErroresBaseFilter implements ExceptionFilter {
       case '23503':
         return { status: 400, mensaje: m || 'Dato invalido' };
 
+      case '22P02':
+      case '23502':
+        // Lo que llega aqui paso los DTOs pero no le sirve a Postgres: un id
+        // que no es numero donde no hubo ParseIntPipe, un jsonb roto, un
+        // NOT NULL sin dato. Es del cliente, no del servidor: 400 y no 500.
+        // El mensaje de Postgres trae el tipo y a veces el valor: no se manda.
+        return { status: 400, mensaje: 'Dato invalido' };
+
+      case '40001':
+      case '40P01':
+        // Dos transacciones se pisaron (dos administradores guardando lo
+        // mismo en el mismo instante) y Postgres aborto una. No paso nada
+        // malo y no quedo nada a medias: se vuelve a intentar.
+        return {
+          status: 409,
+          mensaje: 'Otra operacion toco lo mismo en el mismo momento: volve a intentar',
+        };
+
       default:
         return null;
     }
@@ -139,6 +178,12 @@ export class ErroresBaseFilter implements ExceptionFilter {
     const m = pg.mensaje ?? '';
     const dePostgres = /duplicate key|llave duplicada/i.test(m);
     return m && !dePostgres ? m : 'Ya existe un registro igual';
+  }
+
+  /** El codigo propio de Prisma (P2028...), si es un error de Prisma. */
+  private codigoPrisma(exc: any): string | undefined {
+    const c = exc?.code;
+    return typeof c === 'string' && /^P\d{4}$/.test(c) ? c : undefined;
   }
 
   /**

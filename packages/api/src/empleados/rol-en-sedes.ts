@@ -27,7 +27,8 @@ export async function exigirRolConUso(
   rolId: bigint,
   sucursales: number[],
 ): Promise<void> {
-  const lista = '{' + sucursales.join(',') + '}';
+  // El arreglo va tal cual: Prisma lo manda como parametro bigint[].
+  const lista = sucursales.map((id) => BigInt(id));
 
   // Dos EXISTS y un nombre en una sola ida. rol_permiso y modulo_sucursal
   // estan recortadas por RLS a la empresa de la sesion, asi que un rol o

@@ -106,7 +106,8 @@ export async function rolDe(tx: Tx, usuarioId: number): Promise<bigint> {
 export async function fijarSedes(
   tx: Tx, usuarioId: number, rolId: bigint, sucursales: number[], motivoDado?: string,
 ) {
-  const lista = '{' + sucursales.join(',') + '}';
+  // El arreglo va tal cual: Prisma lo manda como parametro bigint[].
+  const lista = sucursales.map((id) => BigInt(id));
 
   // Que alguna de las pedidas exista y este abierta. Se pregunta ANTES de
   // retirar nada: por un id mal escrito nadie queda encerrado afuera.
