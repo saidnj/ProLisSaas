@@ -26,3 +26,7 @@ Thumbs.db
 .vscode/*
 !.vscode/settings.json
 !.vscode/extensions.json
+
+# Documentacion de Prisma para asistentes (la instala Prisma; no es del proyecto)
+packages/api/.claude/
+packages/api/.windsurf/
