@@ -401,7 +401,19 @@ CREATE POLICY rls_evento_anotar ON audit.evento
 
 -- ---------------------------------------------------------- 07_identidad.sql
 
-GRANT EXECUTE ON FUNCTION core.registrar_paciente TO lis_app;
+-- core.paciente cerrada: se crea por registrar_paciente y se edita por
+-- editar_paciente (SECURITY DEFINER, exigen paciente.crear / paciente.editar y
+-- dejan rastro en audit.evento). Con el INSERT/UPDATE abiertos, la ficha se
+-- tocaba sin bitacora y se podia crear un expediente sin pasar por el
+-- correlativo. (fusionar_paciente entra cuando tenga pantalla.)
+REVOKE INSERT, UPDATE ON core.paciente FROM lis_app;
+
+REVOKE ALL     ON FUNCTION core.registrar_paciente(text, plataforma.tipo_documento, text, date, int, int, plataforma.sexo, text, text, text) FROM PUBLIC;
+REVOKE ALL     ON FUNCTION core.editar_paciente(bigint, text, plataforma.tipo_documento, text, date, int, int, plataforma.sexo, text, text, text) FROM PUBLIC;
+
+GRANT  EXECUTE ON FUNCTION core.registrar_paciente(text, plataforma.tipo_documento, text, date, int, int, plataforma.sexo, text, text, text) TO lis_app;
+GRANT  EXECUTE ON FUNCTION core.editar_paciente(bigint, text, plataforma.tipo_documento, text, date, int, int, plataforma.sexo, text, text, text) TO lis_app;
+GRANT  EXECUTE ON FUNCTION core.buscar_pacientes(text, int) TO lis_app;
 
 GRANT EXECUTE ON FUNCTION core.anotar_referencia TO lis_app;
 

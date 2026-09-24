@@ -41,29 +41,29 @@ RETURNING usuario_id AS u_hos \gset
 \echo ''
 \echo '=== 1 · Registrar un paciente ya no depende de ningun registro global =='
 \echo '    esperado: un expediente EXP-000001'
-SELECT * FROM core.registrar_paciente(
-  :lab,'SAID GABRIEL','HOCH URBINA','identidad','0801200400844',
-  DATE '2004-11-15','masculino', NULL, NULL, NULL, :u_lab);
+-- registrar_paciente lee la sesion (empresa, usuario, sede) y exige paciente.crear.
+SET lis.empresa_id = :'lab'; SET lis.usuario_id = :'u_lab'; SET lis.sucursal_id = :'suc_lab_centro';
+SELECT core.registrar_paciente('SAID GABRIEL HOCH URBINA','identidad','0801200400844',
+  DATE '2004-11-15',NULL,NULL,'masculino') AS pac_lab \gset
+SELECT expediente FROM core.paciente WHERE paciente_id = :pac_lab;
 
 
 \echo ''
 \echo '=== 2 · El mismo documento repetido DENTRO de la empresa se atrapa ===='
 \echo '    esperado: ERROR que manda al expediente que ya existe'
-SELECT * FROM core.registrar_paciente(
-  :lab,'SAID G.','HOCH','identidad','0801200400844',
-  DATE '2004-11-15','masculino', NULL, NULL, NULL, :u_lab);
+SELECT core.registrar_paciente('SAID G. HOCH','identidad','0801-2004-00844',
+  DATE '2004-11-15',NULL,NULL,'masculino');
 
 
 \echo ''
 \echo '=== 3 · Y el MISMO documento en la otra empresa ahora SI se permite ==='
 \echo '    esperado: expediente propio del hospital. Antes se vinculaba a una'
 \echo '    fila compartida; ahora los dos expedientes son independientes.'
-SELECT * FROM core.registrar_paciente(
-  :hos,'SAID GABRIEL','HOCH URBINA','identidad','0801200400844',
-  DATE '2004-11-15','masculino', NULL, NULL, NULL, :u_hos);
-
-SELECT paciente_id AS pac_lab FROM core.paciente WHERE empresa_id = :lab LIMIT 1 \gset
-SELECT paciente_id AS pac_hos FROM core.paciente WHERE empresa_id = :hos LIMIT 1 \gset
+SET lis.empresa_id = :'hos'; SET lis.usuario_id = :'u_hos'; SET lis.sucursal_id = :'suc_hos';
+SELECT core.registrar_paciente('SAID GABRIEL HOCH URBINA','identidad','0801200400844',
+  DATE '2004-11-15',NULL,NULL,'masculino') AS pac_hos \gset
+SELECT expediente FROM core.paciente WHERE paciente_id = :pac_hos;
+RESET lis.empresa_id; RESET lis.usuario_id; RESET lis.sucursal_id;
 
 
 \echo ''
@@ -211,3 +211,23 @@ WHERE qual LIKE '%empresa_origen%' OR qual LIKE '%empresa_destino%'
 SELECT n.nspname||'.'||c.relname AS sobrevivio
 FROM pg_class c JOIN pg_namespace n ON n.oid = c.relnamespace
 WHERE c.relname IN ('persona','conflicto_identidad','empresa_asociada','derivacion');
+
+
+\echo ''
+\echo '=== 17 · La fecha de nacimiento: la edad la calcula, y una estimada ==='
+\echo '    no se confirma sola'
+\echo '    esperado: registrada con 25 a 3 m -> hoy - 25a3m, estimada t;'
+\echo '    guardar con la MISMA fecha sin edad -> false (nada cambio) y sigue t;'
+\echo '    otra fecha -> t (confirmada, estimada f); despues con edad -> ERROR'
+SET lis.empresa_id = :'lab'; SET lis.usuario_id = :'u_lab'; SET lis.sucursal_id = :'suc_lab_centro';
+SELECT core.registrar_paciente('ROSA ESTIMADA','ninguno',NULL,NULL,25,3,'femenino') AS pac_est \gset
+SELECT fecha_nacimiento = (current_date - make_interval(years => 25, months => 3))::date AS hoy_menos_25a3m,
+       fecha_nacimiento_estimada AS estimada
+FROM core.paciente WHERE paciente_id = :pac_est;
+SELECT fecha_nacimiento AS f_est FROM core.paciente WHERE paciente_id = :pac_est \gset
+SELECT core.editar_paciente(:pac_est,'ROSA ESTIMADA','ninguno',NULL,DATE :'f_est',NULL,NULL,'femenino') AS misma_fecha_cambio;
+SELECT fecha_nacimiento_estimada AS sigue_estimada FROM core.paciente WHERE paciente_id = :pac_est;
+SELECT core.editar_paciente(:pac_est,'ROSA ESTIMADA','ninguno',NULL,DATE '2001-06-15',NULL,NULL,'femenino') AS otra_fecha_cambio;
+SELECT fecha_nacimiento, fecha_nacimiento_estimada AS estimada FROM core.paciente WHERE paciente_id = :pac_est;
+SELECT core.editar_paciente(:pac_est,'ROSA ESTIMADA','ninguno',NULL,NULL,30,NULL,'femenino');
+RESET lis.empresa_id; RESET lis.usuario_id; RESET lis.sucursal_id;

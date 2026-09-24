@@ -1,0 +1,9 @@
+// Solo lo propio de esta pantalla. Lo compartido (pagina, panel, datos, chips, botones) es global: src/estilos/.
+
+.expediente {
+  font-family: ui-monospace, 'Cascadia Mono', Consolas, monospace;
+}
+
+.cabecera .sub .expediente { color: var(--tinta); font-weight: 600; }
+
+.datos .pista { color: var(--suave); font-size: 0.8rem; }

@@ -20,9 +20,9 @@ suben de una vez.
    `usuario.administrar`, desde la base (privilegios por columna + vista o
    función SECURITY DEFINER). Nombre y cargo siguen abiertos: `abrirSesion()`
    los lee antes de que haya sede. Toca la lista, la ficha y `duplicados.ts`.
-5. **`plataforma.migracion`**: tabla donde cada parche anota su nombre al
-   final y se salta solo si ya está. Entra con el próximo parche que se
-   escriba; los once anteriores se registran a mano una vez.
+5. ~~`plataforma.migracion`~~ — hecho (set pacientes): cada parche anota su
+   nombre al final y se salta solo si ya está (`\gset` + `\if`). El de
+   pacientes registra los doce anteriores; la carga limpia siembra los trece.
 6. **Throttler** en `/auth/login` y `/auth/activar` por IP
    (`@nestjs/throttler`; ojo con `X-Forwarded-For` detrás de un proxy).
 7. **Refrescar la sesión al navegar**: `GET /auth/yo` desde el guard, para que
@@ -40,8 +40,18 @@ suben de una vez.
   el mismo molde que empleados y roles. El catálogo ya existe. **Antes hay que
   decidir quién crea las sucursales: el propietario desde el LIS, o el operador
   (como parte del contrato).** Hasta entonces, queda pendiente.
-- **Pacientes**: apenas empezado. Al armarlo: `exigirPermiso` en `listar` y
-  paginación por cursor `(apellidos, nombres, paciente_id)`.
+- **Pacientes**: registrar, editar y ver están (set pacientes). Queda:
+  - **Duplicados**: la pantalla de "posibles duplicados" al registrar
+    (`core.posibles_duplicados` ya compara nombre y año) y la de fusionar
+    (`core.fusionar_paciente` pasa a SECURITY DEFINER cuando tenga pantalla;
+    la opción "Fusionar duplicados" del menú sigue apagada).
+  - **"Crear boleta"**: los botones están apagados hasta que exista el módulo
+    de órdenes.
+  - **Paginación**: la lista trae los últimos 50 y lo demás se busca. Si un
+    día hace falta "ver todos", va por cursor `(creado_en, paciente_id)`.
+  - Detalle: una fecha estimada que resulte ser exactamente la real no se
+    puede "confirmar" sin cambiarla (la base toma la misma fecha como "no la
+    toqué"). Es un caso de uno en 365 y queda documentado en `editar_paciente`.
 - **Auditoría**: pantalla sobre `audit.evento`.
 - **Traspaso de propiedad**: es del operador, no del LIS; falta definirlo.
 - **Estrategia de errores en el front**: decisión conjunta pendiente (hoy cada

@@ -33,8 +33,8 @@ export const MENU: OpcionMenu[] = [
     texto: 'Pacientes',
     modulo: 'core',
     hijos: [
-      { texto: 'Ver pacientes',      permiso: 'paciente.ver' },
-      { texto: 'Registrar paciente', permiso: 'paciente.crear' },
+      { texto: 'Ver pacientes',      ruta: '/pacientes',       permiso: 'paciente.ver' },
+      { texto: 'Registrar paciente', ruta: '/pacientes/nuevo', permiso: 'paciente.crear' },
       { texto: 'Fusionar duplicados', permiso: 'paciente.fusionar' },
     ],
   },
@@ -72,6 +72,7 @@ export const MENU: OpcionMenu[] = [
       // permiso. Si algun dia se separan, se separa aqui tambien.
       { texto: 'Empleados', ruta: '/empleados', permiso: 'usuario.administrar', modulo: 'core' },
       { texto: 'Roles',     ruta: '/roles',     permiso: 'usuario.administrar', modulo: 'core' },
+      { texto: 'Usuarios',  permiso: 'usuario.administrar', modulo: 'core' },
       { texto: 'Sucursales',  permiso: 'sucursal.administrar', modulo: 'core' },
       { texto: 'Convenios',   permiso: 'convenio.administrar', modulo: 'core' },
       { texto: 'Catalogo',    permiso: 'catalogo.administrar',  modulo: 'lab_clinico' },

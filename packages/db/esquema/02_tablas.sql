@@ -36,6 +36,22 @@
 
 
 -- ---------------------------------------------------------------------
+-- Los parches aplicados a esta base
+--
+-- Cada parche de db/parches/ anota su nombre al terminar y se salta solo si
+-- ya esta. Una base cargada desde estos archivos los trae todos anotados
+-- (06_semillas.sql), porque ya los contiene.
+-- ---------------------------------------------------------------------
+CREATE TABLE plataforma.migracion (
+  nombre       text PRIMARY KEY,
+  aplicado_en  timestamptz NOT NULL DEFAULT now()
+);
+
+COMMENT ON TABLE plataforma.migracion IS
+  'Que parches de db/parches/ se le aplicaron a esta base y cuando. Lo escribe '
+  'cada parche al final; lo lee cada parche al principio para no repetirse.';
+
+-- ---------------------------------------------------------------------
 -- Catalogo de modulos del producto
 -- ---------------------------------------------------------------------
 CREATE TABLE plataforma.modulo (
@@ -499,14 +515,19 @@ CREATE TABLE core.paciente (
   paciente_id       bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
   empresa_id        bigint NOT NULL REFERENCES core.empresa (empresa_id),
   expediente        text NOT NULL,
-  -- Copia local de la identidad al momento de registrar.
-  nombres           text NOT NULL,
-  apellidos         text NOT NULL,
-  nombre_completo   text GENERATED ALWAYS AS (apellidos || ', ' || nombres) STORED,
+  -- El nombre tal como lo dicta el paciente, en un solo campo: recepcion no
+  -- separa nombres de apellidos (y en un laboratorio no hace falta).
+  nombre_completo   text NOT NULL,
   tipo_documento    plataforma.tipo_documento NOT NULL DEFAULT 'ninguno',
   documento         text,
-  fecha_nacimiento  date,
-  sexo              plataforma.sexo NOT NULL DEFAULT 'no_especificado',
+  -- Obligatoria: los rangos de referencia dependen de la edad. Cuando no se
+  -- sabe la fecha, recepcion pone la edad y la base calcula la fecha,
+  -- marcada como estimada; la edad no se guarda nunca.
+  fecha_nacimiento  date NOT NULL,
+  fecha_nacimiento_estimada boolean NOT NULL DEFAULT false,
+  -- Obligatorio y biologico: decide el rango de referencia. Sin valor por
+  -- omision a proposito: se pregunta.
+  sexo              plataforma.sexo NOT NULL,
   telefono          text,
   correo            text,
   direccion         text,
@@ -516,11 +537,13 @@ CREATE TABLE core.paciente (
   fusionado_en              timestamptz,
   fusionado_por_usuario_id  bigint,
 
-  creado_por_usuario_id  bigint,
+  -- Quien lo registro y quien lo edito esta en audit.evento (paciente.crear,
+  -- paciente.editar): no hay creado_por ni actualizado_en (E-22).
   creado_en       timestamptz NOT NULL DEFAULT now(),
 
   CONSTRAINT uq_paciente_empresa    UNIQUE (paciente_id, empresa_id),
   CONSTRAINT uq_paciente_expediente UNIQUE (empresa_id, expediente),
+  CONSTRAINT ck_paciente_nombre CHECK (length(btrim(nombre_completo)) BETWEEN 2 AND 120),
   CONSTRAINT ck_paciente_documento CHECK (
     (tipo_documento =  'ninguno' AND documento IS NULL) OR
     (tipo_documento <> 'ninguno' AND documento IS NOT NULL AND btrim(documento) <> '')
@@ -540,6 +563,10 @@ COMMENT ON TABLE core.paciente IS
 COMMENT ON COLUMN core.paciente.expediente IS
   'La identidad real del paciente. La genera el sistema, no depende del documento, '
   'y por eso recepcion nunca tiene que inventar un documento falso para poder atender.';
+
+COMMENT ON COLUMN core.paciente.fecha_nacimiento_estimada IS
+  'true cuando la fecha salio de una edad ("25 anios", "6 meses") y no de un '
+  'documento. Una fecha confirmada no vuelve a ser estimada (editar_paciente).';
 
 COMMENT ON COLUMN core.paciente.fusionado_en_paciente_id IS
   'Si este registro resulto ser duplicado, apunta al que quedo. Las ordenes viejas '
@@ -908,11 +935,6 @@ ALTER TABLE core.episodio
   ADD CONSTRAINT fk_episodio_mensaje
   FOREIGN KEY (mensaje_id, empresa_id)
   REFERENCES core.mensaje (mensaje_id, empresa_id);
-
-ALTER TABLE core.paciente
-  ADD CONSTRAINT fk_paciente_creado_por
-  FOREIGN KEY (creado_por_usuario_id, empresa_id)
-  REFERENCES core.usuario (usuario_id, empresa_id);
 
 ALTER TABLE core.paciente
   ADD CONSTRAINT fk_paciente_fusionado_por

@@ -172,7 +172,7 @@ export class ErroresBaseFilter implements ExceptionFilter {
       uq_sucursal_codigo:   'Ya hay una sucursal con ese codigo',
       uq_sucursal_nombre:   'Ya hay una sucursal con ese nombre',
       uq_activacion_viva:   'Esa persona ya tiene un codigo de activacion vivo',
-      uq_paciente_documento:'Ya hay un paciente con ese numero de identidad',
+      uq_paciente_documento:'Ya hay un paciente con ese documento',
     };
     if (pg.restriccion) return conocidos[pg.restriccion] ?? 'Ya existe un registro igual';
     const m = pg.mensaje ?? '';

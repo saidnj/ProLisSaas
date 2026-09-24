@@ -23,10 +23,12 @@ SELECT :lab, :empleado_id, rol_id, 'said', '$argon2id$marcador'
 FROM core.rol WHERE empresa_id = :lab AND nombre = 'Administrador'
 RETURNING usuario_id \gset
 
-SELECT * FROM core.registrar_paciente(
-  :lab, 'SAID GABRIEL','HOCH URBINA','identidad','1807200400844',
-  DATE '2004-11-15','masculino', NULL, NULL, NULL, :usuario_id
-);
+-- registrar_paciente lee la sesion (empresa, usuario, sede) y exige paciente.crear.
+SELECT sucursal_id AS s_lab FROM core.sucursal WHERE empresa_id = :lab \gset
+SET lis.empresa_id = :'lab'; SET lis.usuario_id = :'usuario_id'; SET lis.sucursal_id = :'s_lab';
+SELECT core.registrar_paciente('SAID GABRIEL HOCH URBINA','identidad','1807200400844',
+  DATE '2004-11-15',NULL,NULL,'masculino');
+RESET lis.empresa_id; RESET lis.usuario_id; RESET lis.sucursal_id;
 
 
 \echo ''
@@ -99,8 +101,8 @@ RESET ROLE;
 
 \echo '=== 7 · Fusion de duplicados sin mover historia ==================='
 \echo '    esperado: el duplicado apunta al ganador y queda auditado'
-INSERT INTO core.paciente (empresa_id, expediente, nombres, apellidos, sexo, creado_por_usuario_id)
-VALUES (1, core.siguiente_correlativo(1, NULL, 'expediente'), 'SAID G.','HOCH','masculino', 1)
+INSERT INTO core.paciente (empresa_id, expediente, nombre_completo, fecha_nacimiento, sexo)
+VALUES (1, core.siguiente_correlativo(1, NULL, 'expediente'), 'SAID G. HOCH', DATE '2004-11-15', 'masculino')
 RETURNING paciente_id \gset
 SET lis.empresa_id = '1'; SET lis.sucursal_id = '1';
 SELECT core.fusionar_paciente(:paciente_id, 1, 1);

@@ -10,6 +10,7 @@
 //    <p class="aviso-demo">...</p>                 aviso ambar
 //    <div class="estado"><strong>Nada aqui</strong><p>...</p></div>
 //    <p class="cargando">Cargando...</p>
+//    <span class="girador"></span>               el circulo que gira (buscando)
 // =====================================================================
 
 .chip {
@@ -68,4 +69,22 @@
   text-align: center;
   color: var(--suave);
   font-size: 0.9rem;
+}
+
+// El circulo que gira. Es retroalimentacion ("estoy en eso"), no una barra
+// de progreso: quien lo pone lo enciende y lo apaga. Chico, para caber al
+// lado de un campo o de un boton.
+.girador {
+  display: inline-block;
+  width: 1rem;
+  height: 1rem;
+  border: 2px solid var(--borde);
+  border-top-color: var(--acento);
+  border-radius: 50%;
+  animation: girar 0.7s linear infinite;
+  flex: none;
+}
+
+@keyframes girar {
+  to { transform: rotate(360deg); }
 }

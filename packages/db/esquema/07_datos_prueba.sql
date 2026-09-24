@@ -337,3 +337,27 @@ JOIN (VALUES
   ('wendy.alvarado','VAL')
 ) AS x(username, codigo) ON x.username = u.username AND x.codigo = s.codigo
 ON CONFLICT DO NOTHING;
+
+-- ---------------------------------------------------------------------
+-- 11 - Unos pacientes en Laboratorio Ochoa, para ver la lista y la busqueda
+--      ("sair" tiene que traer a Sair primero y a Said despues).
+--      Como postgres, con el correlativo de expediente; sin bitacora.
+-- ---------------------------------------------------------------------
+INSERT INTO core.paciente (empresa_id, expediente, nombre_completo, tipo_documento, documento,
+                           fecha_nacimiento, fecha_nacimiento_estimada, sexo, telefono)
+SELECT e.empresa_id, core.siguiente_correlativo(e.empresa_id, NULL, 'expediente'),
+       x.nombre, x.tipo::plataforma.tipo_documento, x.documento,
+       x.nacio, x.estimada, x.sexo::plataforma.sexo, x.telefono
+FROM core.empresa e
+JOIN (VALUES
+  ('Said Gabriel Hoch Urbina',   'identidad', '0801200400844', DATE '2004-11-15', false, 'masculino', '9933-0001'),
+  ('Sair Alejandro Mejia Lopez', 'identidad', '0801199912345', DATE '1999-03-02', false, 'masculino', '9933-0002'),
+  ('Sayra Lizeth Nunez Bonilla', 'ninguno',   NULL,            DATE '2001-07-20', true,  'femenino',  NULL),
+  ('Maria Jose Lopez Andino',    'identidad', '0801198500777', DATE '1985-05-20', false, 'femenino',  '9933-0004'),
+  ('Jose Maria Lopez Andino',    'pasaporte', 'P0123456',      DATE '1982-12-01', false, 'masculino', NULL),
+  ('Ana Lucia Zelaya Cruz',      'ninguno',   NULL,            (current_date - interval '6 months')::date, true, 'femenino', '9933-0006'),
+  ('Carlos Roberto Andino Paz',  'identidad', '0801197000123', DATE '1970-01-30', false, 'masculino', '9933-0007'),
+  ('Lucia Fernanda Reyes Mejia', 'partida_nacimiento', 'PN-2023-0456', DATE '2023-09-10', false, 'femenino', NULL)
+) AS x(nombre, tipo, documento, nacio, estimada, sexo, telefono) ON true
+WHERE e.rtn = '08019016543210'
+  AND NOT EXISTS (SELECT 1 FROM core.paciente p WHERE p.empresa_id = e.empresa_id AND p.nombre_completo = x.nombre);

@@ -1,0 +1,104 @@
+<app-encabezado />
+
+<div class="pagina">
+
+  <div class="migas">
+    <a routerLink="/pacientes">Pacientes</a> <span>/</span>
+    <span>{{ paciente()?.expediente ?? '...' }}</span>
+  </div>
+
+  @if (cargando()) {
+    <p class="cargando">Cargando...</p>
+
+  } @else if (error()) {
+    <p class="error-caja" role="alert">{{ error() }}</p>
+    <a class="boton suave" routerLink="/pacientes">Volver a la lista</a>
+
+  } @else if (paciente(); as p) {
+
+    <div class="cabecera">
+      <div>
+        <h1>{{ p.nombreCompleto }}</h1>
+        <p class="sub">
+          <span class="expediente">{{ p.expediente }}</span>
+          · {{ sexo() }}
+          · {{ p.fechaEstimada ? '~ ' : '' }}{{ edad() }}
+          @if (p.fechaEstimada) { <span class="chip info">fecha estimada</span> }
+          @if (p.fusionadoEn !== null) { <span class="chip gris">fusionado en otro expediente</span> }
+        </p>
+      </div>
+
+      <div class="acciones">
+        <a class="boton fantasma" routerLink="/pacientes">Volver</a>
+        @if (puedeEditar() && p.fusionadoEn === null) {
+          <a class="boton suave" [routerLink]="['/pacientes', p.pacienteId, 'editar']">Editar</a>
+        }
+        <!-- Todavia no hay boletas. Apagado a proposito: no hace nada. -->
+        <button type="button" class="boton primario" disabled title="Pronto">Crear boleta</button>
+      </div>
+    </div>
+
+    @if (p.fechaEstimada) {
+      <p class="aviso-demo">
+        La fecha de nacimiento es estimada: se registro con la edad, no con la fecha.
+        Cuando se sepa la fecha real, se corrige desde Editar.
+      </p>
+    }
+
+    <div class="panel">
+      <div class="cuerpo">
+        <dl class="datos">
+          <div class="dato">
+            <dt>Expediente</dt>
+            <dd class="expediente">{{ p.expediente }}</dd>
+          </div>
+          <div class="dato">
+            <dt>Documento</dt>
+            @if (documento()) {
+              <dd>{{ documento() }}</dd>
+            } @else {
+              <dd class="vacio">sin documento</dd>
+            }
+          </div>
+          <div class="dato">
+            <dt>Fecha de nacimiento</dt>
+            <dd>
+              {{ fechaNacimiento() | date:'dd/MM/yyyy' }}
+              <span class="pista">({{ p.fechaEstimada ? 'estimada, ' : '' }}{{ edad() }})</span>
+            </dd>
+          </div>
+          <div class="dato">
+            <dt>Sexo</dt>
+            <dd>{{ sexo() }}</dd>
+          </div>
+          <div class="dato">
+            <dt>Telefono</dt>
+            <dd [class.vacio]="!p.telefono">{{ p.telefono ?? '—' }}</dd>
+          </div>
+          <div class="dato">
+            <dt>Correo</dt>
+            <dd [class.vacio]="!p.correo">{{ p.correo ?? '—' }}</dd>
+          </div>
+          <div class="dato ancho">
+            <dt>Direccion</dt>
+            <dd [class.vacio]="!p.direccion">{{ p.direccion ?? '—' }}</dd>
+          </div>
+          <div class="dato">
+            <dt>Registrado</dt>
+            <dd>{{ p.creadoEn | date:'d MMM y, HH:mm' }}</dd>
+          </div>
+        </dl>
+      </div>
+    </div>
+
+    <!-- ========================================================= boletas -->
+    <div class="panel">
+      <div class="barra-panel"><strong>Boletas</strong></div>
+      <div class="estado">
+        <strong>Todavia no hay boletas</strong>
+        <p>Cuando exista el modulo de ordenes, aqui van las de este paciente.</p>
+        <button type="button" class="boton suave" disabled title="Pronto">Crear boleta</button>
+      </div>
+    </div>
+  }
+</div>

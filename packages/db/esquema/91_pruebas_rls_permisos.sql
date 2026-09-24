@@ -28,8 +28,8 @@ SELECT sucursal_id AS s_cen FROM core.sucursal WHERE empresa_id = :emp AND codig
 BEGIN;
 
 -- Un paciente para las pruebas de ver y tocar, insertado como postgres.
-INSERT INTO core.paciente (empresa_id, expediente, nombres, apellidos)
-VALUES (:emp, 'PRUEBA-91', 'Paciente', 'De Prueba')
+INSERT INTO core.paciente (empresa_id, expediente, nombre_completo, fecha_nacimiento, sexo)
+VALUES (:emp, 'PRUEBA-91', 'Paciente De Prueba', DATE '1990-01-01', 'femenino')
 RETURNING paciente_id AS pac \gset
 
 -- Y el catalogo de hematologia, que 07 no siembra: hace falta que lab.prueba
@@ -74,9 +74,10 @@ SELECT core.usuario_puede('paciente.ver')
 
 -- ---------------------------------------------------------------------
 \echo ''
-\echo '=== 4 · Ver no es tocar: USING pasa, WITH CHECK revienta ==='
-\echo '    esperado: ERROR new row violates row-level security policy'
-\echo '    (Beto ve al paciente pero no tiene paciente.editar)'
+\echo '=== 4 · Ver no es tocar ==='
+\echo '    esperado: ERROR permission denied for table paciente'
+\echo '    (core.paciente esta cerrada para lis_app: se edita por editar_paciente,'
+\echo '     que exige paciente.editar; Beto ve al paciente y no lo toca a mano)'
 SAVEPOINT antes_del_update;
 UPDATE core.paciente SET telefono = '0000-0000' WHERE paciente_id = :pac;
 ROLLBACK TO SAVEPOINT antes_del_update;

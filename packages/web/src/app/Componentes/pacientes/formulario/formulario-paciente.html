@@ -1,0 +1,215 @@
+<app-encabezado />
+
+<div class="pagina">
+
+  <div class="migas">
+    <a routerLink="/pacientes">Pacientes</a> <span>/</span>
+    @if (editando && paciente(); as p) {
+      <a [routerLink]="['/pacientes', p.pacienteId]">{{ p.expediente }}</a> <span>/</span>
+    }
+    <span>{{ titulo() }}</span>
+  </div>
+
+  <div class="cabecera">
+    <div>
+      <h1>{{ titulo() }}</h1>
+      <p class="sub">
+        @if (editando) {
+          La ficha del expediente {{ paciente()?.expediente ?? '' }}. Se guarda entera; lo que no cambio no se toca.
+        } @else {
+          Lo que hace falta para abrirle un expediente: nombre, fecha de nacimiento y sexo.
+          El documento y el contacto se pueden completar despues.
+        }
+      </p>
+    </div>
+  </div>
+
+  @if (cargando()) {
+    <p class="cargando">Cargando...</p>
+
+  } @else if (editando && !paciente()) {
+    <p class="error-caja" role="alert">{{ error() }}</p>
+    <a class="boton suave" routerLink="/pacientes">Volver a la lista</a>
+
+  } @else {
+
+    @if (error()) {
+      <p class="error-caja" role="alert">{{ error() }}</p>
+    }
+
+    <form class="panel" [formGroup]="formulario" (ngSubmit)="guardar()" novalidate>
+      <div class="cuerpo">
+        <div class="campos">
+
+          <label class="campo ancho-total">
+            <span>Nombre completo *</span>
+            <span class="pista">Tal como esta en el documento: nombres y apellidos, en ese orden.</span>
+            <input type="text" formControlName="nombreCompleto" [class.malo]="malo('nombreCompleto')"
+                   autocomplete="off" maxlength="120" autofocus />
+            @if (malo('nombreCompleto')) { <span class="mal-campo">Hace falta el nombre completo (al menos 2 caracteres)</span> }
+          </label>
+
+          <label class="campo">
+            <span>Tipo de documento</span>
+            <span class="pista">Sin documento tambien se puede registrar.</span>
+            <select formControlName="tipoDocumento">
+              @for (t of tiposDocumento; track t.id) {
+                <option [value]="t.id">{{ t.texto }}</option>
+              }
+            </select>
+          </label>
+
+          <label class="campo">
+            <span>Numero de documento {{ conDocumento() ? '*' : '' }}</span>
+            <span class="pista">
+              @if (conDocumento()) {
+                Con o sin guiones, da igual: no se repite en la empresa.
+              } @else {
+                No aplica sin tipo de documento.
+              }
+            </span>
+            <input type="text" formControlName="documento"
+                   [class.malo]="(intentado() && faltaDocumento()) || enUso().has('documento')"
+                   autocomplete="off" maxlength="40" />
+            @if (intentado() && faltaDocumento()) { <span class="mal-campo">Con tipo de documento hace falta el numero</span> }
+            @if (enUso().has('documento')) { <span class="mal-campo">{{ mensajeEnUso() }}</span> }
+          </label>
+
+          <!-- ============================================================
+               LA FECHA DE NACIMIENTO, O LA EDAD. Un solo bloque con dos
+               caras; nunca las dos llenas. Ver formulario-paciente.ts.
+               ============================================================ -->
+          <div class="ancho-total nacimiento" [class.estimando]="modoEdad()">
+
+            @if (esEstimada() && !modoEdad()) {
+              <p class="aviso-estimada">
+                <strong>Fecha estimada.</strong> Se registro con la edad, no con la fecha
+                ({{ edadActual() }} hoy). Si ahora se sabe la fecha
+                real, ponela aqui: deja de ser estimada. Si no, dejala como esta.
+              </p>
+            }
+
+            @if (!modoEdad()) {
+              <div class="campos">
+                <label class="campo">
+                  <span>Fecha de nacimiento *</span>
+                  <span class="pista">
+                    @if (edadDeLaFecha()) {
+                      Con esa fecha tiene {{ edadDeLaFecha() }}.
+                    } @else if (!editando) {
+                      La fecha real, del documento o dicha por la persona.
+                    } @else if (!esEstimada()) {
+                      Confirmada: se corrige aqui si estaba mal.
+                    }
+                  </span>
+                  <input type="date" formControlName="fechaNacimiento" [max]="hoyIso"
+                         [class.malo]="intentado() && faltaFecha()" />
+                  @if (problemaFecha(); as motivo) {
+                    <span class="mal-campo">{{ motivo }}</span>
+                  } @else if (intentado() && faltaFecha()) {
+                    <span class="mal-campo">Hace falta la fecha de nacimiento (o la edad, con el boton de al lado)</span>
+                  }
+                </label>
+
+                @if (puedeEstimar()) {
+                  <div class="campo alternativa">
+                    <span>Si no se sabe la fecha exacta</span>
+                    <span class="pista">
+                      No la inventes: con este boton se pone la edad y el sistema calcula
+                      la fecha y la deja marcada como <strong>estimada</strong>.
+                    </span>
+                    <button type="button" class="boton suave" (click)="ponerEdad()">
+                      {{ esEstimada() ? 'Volver a estimar con la edad' : 'No se la fecha: poner la edad' }}
+                    </button>
+                  </div>
+                }
+              </div>
+
+              @if (vaAConfirmar()) {
+                <p class="aviso-estimada confirma">
+                  Con esta fecha el expediente queda con fecha de nacimiento <strong>confirmada</strong>
+                  y ya no se va a poder volver a estimar. Si no es la fecha real, no la pongas.
+                </p>
+              }
+
+            } @else {
+              <!-- La cara de la edad: anios, meses, y lo que va a quedar. -->
+              <div class="campos edad">
+                <label class="campo">
+                  <span>Edad: años</span>
+                  <input type="number" formControlName="edadAnios" min="0" max="130" inputmode="numeric"
+                         [class.malo]="intentado() && faltaEdad()" placeholder="0" />
+                  @if (malo('edadAnios')) { <span class="mal-campo">De 0 a 130</span> }
+                </label>
+                <label class="campo">
+                  <span>y meses</span>
+                  <span class="pista">Solo importan en un bebe. 12 meses es un año.</span>
+                  <input type="number" formControlName="edadMeses" min="0" max="11" inputmode="numeric"
+                         [class.malo]="intentado() && faltaEdad()" placeholder="0" />
+                  @if (malo('edadMeses')) { <span class="mal-campo">De 0 a 11</span> }
+                </label>
+                <div class="campo alternativa">
+                  <span>Si despues de todo si se sabe</span>
+                  <button type="button" class="boton fantasma" (click)="ponerFecha()">Tengo la fecha exacta</button>
+                </div>
+              </div>
+
+              @if (intentado() && faltaEdad()) {
+                <span class="mal-campo">Hace falta la edad: años, meses, o las dos cosas</span>
+              }
+
+              <!-- Lo que va a quedar, dicho antes de guardar. -->
+              <p class="aviso-estimada" [class.vacia]="!fechaPrevista()">
+                @if (fechaPrevista(); as f) {
+                  Va a quedar con fecha de nacimiento <strong>{{ f | date:'dd/MM/yyyy' }}</strong>
+                  (hoy menos la edad), marcada como <strong>estimada</strong>. Cuando se sepa la
+                  fecha real, se corrige desde Editar y deja de ser estimada.
+                } @else {
+                  La fecha se calcula con la edad (hoy menos la edad) y queda marcada como
+                  <strong>estimada</strong>. No se guarda la edad: se guarda esa fecha.
+                }
+              </p>
+            }
+          </div>
+
+          <label class="campo">
+            <span>Sexo *</span>
+            <select formControlName="sexo" [class.malo]="malo('sexo')">
+              <option value="" disabled>Elegir...</option>
+              @for (s of sexos; track s.id) {
+                <option [value]="s.id">{{ s.texto }}</option>
+              }
+            </select>
+            @if (malo('sexo')) { <span class="mal-campo">Hace falta el sexo</span> }
+          </label>
+
+          <label class="campo">
+            <span>Telefono</span>
+            <input type="tel" formControlName="telefono" [class.malo]="malo('telefono')"
+                   autocomplete="off" maxlength="30" />
+          </label>
+
+          <label class="campo">
+            <span>Correo</span>
+            <input type="email" formControlName="correo" [class.malo]="malo('correo')"
+                   autocomplete="off" />
+            @if (malo('correo')) { <span class="mal-campo">Ese correo no tiene forma de correo</span> }
+          </label>
+
+          <label class="campo ancho-total">
+            <span>Direccion</span>
+            <input type="text" formControlName="direccion" [class.malo]="malo('direccion')"
+                   autocomplete="off" maxlength="200" />
+          </label>
+        </div>
+
+        <div class="pie-formulario">
+          <a class="boton fantasma" [routerLink]="editando ? ['/pacientes', id] : ['/pacientes']">Cancelar</a>
+          <button type="submit" class="boton primario" [disabled]="guardando()">
+            {{ guardando() ? 'Guardando...' : (editando ? 'Guardar' : 'Registrar') }}
+          </button>
+        </div>
+      </div>
+    </form>
+  }
+</div>

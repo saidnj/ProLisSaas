@@ -57,7 +57,8 @@ label.campo {
   > input, > select { order: 2; }
   > .mal-campo { order: 4; }
 
-  input[type='text'], input[type='email'], input[type='tel'], select {
+  input[type='text'], input[type='email'], input[type='tel'], input[type='date'],
+  input[type='number'], select {
     height: 2.4rem;
     padding: 0 0.7rem;
     border: 1px solid var(--borde);

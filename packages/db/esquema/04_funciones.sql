@@ -1861,84 +1861,393 @@ COMMENT ON FUNCTION core.fusionar_paciente IS
 -- ---------------------------------------------------------------------
 -- Registrar un paciente
 --
--- Es el unico camino para crear uno. Garantiza dos cosas: que el expediente
--- se llena con lo que recepcion escribio y nunca con datos traidos de otra
--- empresa, y que un documento repetido dentro de la MISMA empresa no crea un
--- segundo expediente.
+-- Es el unico camino para crear uno (lis_app no tiene INSERT sobre
+-- core.paciente). Garantiza que el expediente se llena con lo que recepcion
+-- escribio y nunca con datos traidos de otra empresa, y que un documento
+-- repetido dentro de la MISMA empresa no crea un segundo expediente.
 --
--- Ya no intenta vincular con ningun registro global, porque no existe.
+-- La fecha de nacimiento es obligatoria pero recepcion no siempre la sabe:
+-- entonces manda la EDAD (anios y/o meses), la base calcula la fecha
+-- (hoy menos esa edad) y la deja marcada como estimada. Nunca se guarda la
+-- edad. O viene la fecha o viene la edad: las dos, o ninguna, es error.
+--
+-- SECURITY DEFINER (H-57: sin exigir_permiso adentro; usuario_puede y RAISE).
+-- Deja paciente.crear en audit.evento.
 -- ---------------------------------------------------------------------
 CREATE OR REPLACE FUNCTION core.registrar_paciente(
-  p_empresa_id       bigint,
-  p_nombres          text,
-  p_apellidos        text,
+  p_nombre_completo  text,
   p_tipo_documento   plataforma.tipo_documento,
   p_documento        text,
   p_fecha_nacimiento date,
+  p_edad_anios       int,
+  p_edad_meses       int,
   p_sexo             plataforma.sexo,
   p_telefono         text DEFAULT NULL,
   p_correo           text DEFAULT NULL,
-  p_direccion        text DEFAULT NULL,
-  p_usuario_id       bigint DEFAULT NULL
+  p_direccion        text DEFAULT NULL
 )
-RETURNS TABLE (
-  paciente_id bigint,
-  expediente  text
-)
+RETURNS bigint
 LANGUAGE plpgsql
-AS $$
+SECURITY DEFINER
+SET search_path = pg_catalog, core
+AS $fn$
 DECLARE
+  v_empresa    bigint := core.empresa_actual();
+  v_yo         bigint := core.usuario_actual();
+  v_nombre     text   := btrim(regexp_replace(coalesce(p_nombre_completo, ''), '\s+', ' ', 'g'));
+  v_tipo       plataforma.tipo_documento := coalesce(p_tipo_documento, 'ninguno');
+  v_documento  text   := nullif(btrim(coalesce(p_documento, '')), '');
+  v_fecha      date;
+  v_estimada   boolean;
   v_expediente text;
-  v_paciente   bigint;
+  v_existente  text;
+  v_nuevo      bigint;
+BEGIN
+  IF v_empresa IS NULL OR v_yo IS NULL THEN
+    RAISE EXCEPTION 'No hay sesion puesta' USING ERRCODE = '28000';
+  END IF;
+  IF NOT core.usuario_puede('paciente.crear') THEN
+    RAISE EXCEPTION 'No tiene permiso para registrar pacientes' USING ERRCODE = '42501';
+  END IF;
+
+  SELECT f.fecha, f.estimada INTO v_fecha, v_estimada
+    FROM core.fecha_nacimiento_de(p_fecha_nacimiento, p_edad_anios, p_edad_meses) f;
+  PERFORM core.validar_paciente(v_nombre, v_tipo, v_documento, p_sexo);
+
+  -- El documento repetido: se dice a que expediente pertenece, porque lo que
+  -- recepcion quiere es abrir ese y no crear otro. Solo dentro de la empresa.
+  IF v_tipo <> 'ninguno' THEN
+    SELECT pa.expediente INTO v_existente
+      FROM core.paciente pa
+     WHERE pa.empresa_id = v_empresa
+       AND pa.tipo_documento = v_tipo
+       AND core.llave_documento(pa.documento) = core.llave_documento(v_documento)
+       AND pa.fusionado_en_paciente_id IS NULL;
+    IF FOUND THEN
+      RAISE EXCEPTION 'Ese documento ya esta registrado en el expediente %', v_existente
+        USING ERRCODE = '23505';
+    END IF;
+  ELSE
+    v_documento := NULL;
+  END IF;
+
+  v_expediente := core.siguiente_correlativo(v_empresa, NULL, 'expediente');
+
+  INSERT INTO core.paciente (
+    empresa_id, expediente, nombre_completo, tipo_documento, documento,
+    fecha_nacimiento, fecha_nacimiento_estimada, sexo, telefono, correo, direccion
+  ) VALUES (
+    v_empresa, v_expediente, v_nombre, v_tipo, v_documento,
+    v_fecha, v_estimada, p_sexo,
+    nullif(btrim(coalesce(p_telefono, '')), ''),
+    nullif(lower(btrim(coalesce(p_correo, ''))), ''),
+    nullif(btrim(coalesce(p_direccion, '')), '')
+  )
+  RETURNING paciente_id INTO v_nuevo;
+
+  INSERT INTO audit.evento (empresa_id, usuario_id, accion, nombre_esquema, nombre_tabla, registro_id, datos_despues)
+  VALUES (v_empresa, v_yo, 'paciente.crear', 'core', 'paciente', v_nuevo,
+          jsonb_build_object('expediente', v_expediente, 'nombre_completo', v_nombre,
+                             'tipo_documento', v_tipo, 'documento', v_documento,
+                             'fecha_nacimiento', v_fecha, 'fecha_nacimiento_estimada', v_estimada,
+                             'sexo', p_sexo));
+
+  RETURN v_nuevo;
+END
+$fn$;
+
+COMMENT ON FUNCTION core.registrar_paciente IS
+  'El unico camino para crear un paciente. Exige paciente.crear; el expediente lo '
+  'genera el sistema; con edad en vez de fecha, la calcula y la marca estimada. '
+  'Documento repetido en la empresa: 23505 con el expediente. Deja paciente.crear.';
+
+-- ---------------------------------------------------------------------
+-- La fecha de nacimiento a partir de la edad, y las reglas de la ficha
+--
+-- Dos ayudantes que comparten registrar_paciente y editar_paciente:
+--
+--   fecha_nacimiento_de(fecha, anios, meses) -> (fecha, estimada)
+--     Exactamente una de las dos cosas: la fecha (estimada = false) o la
+--     edad (fecha = hoy - anios - meses, estimada = true). La edad puede ser
+--     "25", "2 anios 3 meses" o "6 meses"; nunca se guarda: se guarda la
+--     fecha que sale de ella.
+--
+--   validar_paciente(nombre, tipo, documento, sexo)
+--     Lo que la ficha exige, con mensajes para una persona. Lo que la tabla
+--     tambien exige (CHECK, NOT NULL) llega aqui primero, con palabras.
+-- ---------------------------------------------------------------------
+CREATE OR REPLACE FUNCTION core.fecha_nacimiento_de(
+  p_fecha date, p_anios int, p_meses int
+)
+RETURNS TABLE (fecha date, estimada boolean)
+LANGUAGE plpgsql
+STABLE
+SET search_path = pg_catalog, core
+AS $fn$
+DECLARE
+  v_con_edad boolean := p_anios IS NOT NULL OR p_meses IS NOT NULL;
+BEGIN
+  IF p_fecha IS NOT NULL AND v_con_edad THEN
+    RAISE EXCEPTION 'Va la fecha de nacimiento o la edad, no las dos' USING ERRCODE = '22023';
+  END IF;
+  IF p_fecha IS NULL AND NOT v_con_edad THEN
+    RAISE EXCEPTION 'Hace falta la fecha de nacimiento, o la edad si no se sabe la fecha' USING ERRCODE = '22023';
+  END IF;
+
+  IF p_fecha IS NOT NULL THEN
+    IF p_fecha > current_date THEN
+      RAISE EXCEPTION 'La fecha de nacimiento no puede ser futura' USING ERRCODE = '22023';
+    END IF;
+    IF p_fecha < DATE '1900-01-01' THEN
+      RAISE EXCEPTION 'La fecha de nacimiento no es valida' USING ERRCODE = '22023';
+    END IF;
+    RETURN QUERY SELECT p_fecha, false;
+    RETURN;
+  END IF;
+
+  IF coalesce(p_anios, 0) < 0 OR coalesce(p_anios, 0) > 130
+     OR coalesce(p_meses, 0) < 0 OR coalesce(p_meses, 0) > 11 THEN
+    RAISE EXCEPTION 'La edad lleva de 0 a 130 anios y de 0 a 11 meses' USING ERRCODE = '22023';
+  END IF;
+  RETURN QUERY SELECT
+    (current_date - make_interval(years => coalesce(p_anios, 0), months => coalesce(p_meses, 0)))::date,
+    true;
+END
+$fn$;
+
+CREATE OR REPLACE FUNCTION core.validar_paciente(
+  p_nombre text, p_tipo plataforma.tipo_documento, p_documento text, p_sexo plataforma.sexo
+)
+RETURNS void
+LANGUAGE plpgsql
+IMMUTABLE
+SET search_path = pg_catalog, core
+AS $fn$
+BEGIN
+  IF length(coalesce(p_nombre, '')) < 2 OR length(p_nombre) > 120 THEN
+    RAISE EXCEPTION 'El nombre lleva de 2 a 120 caracteres' USING ERRCODE = '22023';
+  END IF;
+  IF p_sexo IS NULL THEN
+    RAISE EXCEPTION 'Hace falta el sexo' USING ERRCODE = '22023';
+  END IF;
+  IF p_tipo <> 'ninguno' AND p_documento IS NULL THEN
+    RAISE EXCEPTION 'Con tipo de documento hace falta el numero' USING ERRCODE = '22023';
+  END IF;
+  IF p_documento IS NOT NULL AND length(p_documento) > 40 THEN
+    RAISE EXCEPTION 'El documento lleva hasta 40 caracteres' USING ERRCODE = '22023';
+  END IF;
+END
+$fn$;
+
+-- ---------------------------------------------------------------------
+-- Editar un paciente
+--
+-- La ficha entera, tal como esta en pantalla. Lo que vino igual no se
+-- escribe ni deja evento. Exige paciente.editar. Un fusionado no se edita
+-- (se edita el que quedo). Una fecha de nacimiento CONFIRMADA no vuelve a
+-- ser estimada: se corrige la fecha, no se estima. Una estimada si puede
+-- confirmarse con la fecha real, o volver a estimarse.
+-- ---------------------------------------------------------------------
+CREATE OR REPLACE FUNCTION core.editar_paciente(
+  p_paciente_id      bigint,
+  p_nombre_completo  text,
+  p_tipo_documento   plataforma.tipo_documento,
+  p_documento        text,
+  p_fecha_nacimiento date,
+  p_edad_anios       int,
+  p_edad_meses       int,
+  p_sexo             plataforma.sexo,
+  p_telefono         text DEFAULT NULL,
+  p_correo           text DEFAULT NULL,
+  p_direccion        text DEFAULT NULL
+)
+RETURNS boolean
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = pg_catalog, core
+AS $fn$
+DECLARE
+  v_empresa    bigint := core.empresa_actual();
+  v_yo         bigint := core.usuario_actual();
+  v_actual     core.paciente%ROWTYPE;
+  v_nombre     text   := btrim(regexp_replace(coalesce(p_nombre_completo, ''), '\s+', ' ', 'g'));
+  v_tipo       plataforma.tipo_documento := coalesce(p_tipo_documento, 'ninguno');
+  v_documento  text   := nullif(btrim(coalesce(p_documento, '')), '');
+  v_telefono   text   := nullif(btrim(coalesce(p_telefono, '')), '');
+  v_correo     text   := nullif(lower(btrim(coalesce(p_correo, ''))), '');
+  v_direccion  text   := nullif(btrim(coalesce(p_direccion, '')), '');
+  v_fecha      date;
+  v_estimada   boolean;
   v_existente  text;
 BEGIN
-  PERFORM core.exigir_permiso('paciente.crear', p_usuario_id);
+  IF v_empresa IS NULL OR v_yo IS NULL THEN
+    RAISE EXCEPTION 'No hay sesion puesta' USING ERRCODE = '28000';
+  END IF;
+  IF NOT core.usuario_puede('paciente.editar') THEN
+    RAISE EXCEPTION 'No tiene permiso para editar pacientes' USING ERRCODE = '42501';
+  END IF;
 
-  -- Un documento mal tecleado que ya existe aqui se atrapa ahora. Entre
-  -- empresas no hay nada que atrapar: los expedientes son independientes.
-  IF coalesce(p_tipo_documento,'ninguno') <> 'ninguno'
-     AND btrim(coalesce(p_documento,'')) <> '' THEN
+  SELECT * INTO v_actual FROM core.paciente
+   WHERE paciente_id = p_paciente_id AND empresa_id = v_empresa;
+  IF NOT FOUND THEN
+    RAISE EXCEPTION 'Ese paciente no existe en esta empresa' USING ERRCODE = '42501';
+  END IF;
+  IF v_actual.fusionado_en_paciente_id IS NOT NULL THEN
+    RAISE EXCEPTION 'Este expediente se fusiono en otro: se edita el que quedo' USING ERRCODE = '22023';
+  END IF;
+
+  IF NOT v_actual.fecha_nacimiento_estimada
+     AND (p_edad_anios IS NOT NULL OR p_edad_meses IS NOT NULL) THEN
+    RAISE EXCEPTION 'La fecha de nacimiento ya esta confirmada: se corrige la fecha, no se estima'
+      USING ERRCODE = '22023';
+  END IF;
+
+  -- La misma fecha estimada que ya tenia, sin edad, no afirma nada: sigue
+  -- estimada. Es lo que manda la pantalla cuando se edita otra cosa (el
+  -- telefono) y la fecha no se toco; si se volviera a pasar por
+  -- fecha_nacimiento_de quedaria "confirmada" sin que nadie lo dijera.
+  -- Confirmar es poner la fecha real, que es otra.
+  IF v_actual.fecha_nacimiento_estimada
+     AND p_fecha_nacimiento = v_actual.fecha_nacimiento
+     AND p_edad_anios IS NULL AND p_edad_meses IS NULL THEN
+    v_fecha    := v_actual.fecha_nacimiento;
+    v_estimada := true;
+  ELSE
+    SELECT f.fecha, f.estimada INTO v_fecha, v_estimada
+      FROM core.fecha_nacimiento_de(p_fecha_nacimiento, p_edad_anios, p_edad_meses) f;
+  END IF;
+  PERFORM core.validar_paciente(v_nombre, v_tipo, v_documento, p_sexo);
+  IF v_tipo = 'ninguno' THEN v_documento := NULL; END IF;
+
+  IF v_documento IS NOT NULL THEN
     SELECT pa.expediente INTO v_existente
-    FROM core.paciente pa
-    WHERE pa.empresa_id     = p_empresa_id
-      AND pa.tipo_documento = p_tipo_documento
-      AND pa.documento      = btrim(p_documento)
-      AND pa.fusionado_en_paciente_id IS NULL;
-
+      FROM core.paciente pa
+     WHERE pa.empresa_id = v_empresa AND pa.paciente_id <> p_paciente_id
+       AND pa.tipo_documento = v_tipo
+       AND core.llave_documento(pa.documento) = core.llave_documento(v_documento)
+       AND pa.fusionado_en_paciente_id IS NULL;
     IF FOUND THEN
-      RAISE EXCEPTION
-        'Ese documento ya esta registrado en el expediente %. Abre ese expediente '
-        'en vez de crear uno nuevo; si de verdad es otra persona, revisa el numero.',
-        v_existente
-        USING ERRCODE = 'unique_violation';
+      RAISE EXCEPTION 'Ese documento ya esta registrado en el expediente %', v_existente
+        USING ERRCODE = '23505';
     END IF;
   END IF;
 
-  v_expediente := core.siguiente_correlativo(p_empresa_id, NULL, 'expediente');
+  -- Igual que estaba: no se escribe ni hay evento. Una fecha estimada que
+  -- se vuelve a estimar con la misma edad da la misma fecha si es el mismo
+  -- dia; si cambio, es un cambio.
+  IF v_actual.nombre_completo = v_nombre
+     AND v_actual.tipo_documento = v_tipo
+     AND v_actual.documento IS NOT DISTINCT FROM v_documento
+     AND v_actual.fecha_nacimiento = v_fecha
+     AND v_actual.fecha_nacimiento_estimada = v_estimada
+     AND v_actual.sexo = p_sexo
+     AND v_actual.telefono IS NOT DISTINCT FROM v_telefono
+     AND v_actual.correo IS NOT DISTINCT FROM v_correo
+     AND v_actual.direccion IS NOT DISTINCT FROM v_direccion THEN
+    RETURN false;
+  END IF;
 
-  INSERT INTO core.paciente (
-    empresa_id, expediente,
-    nombres, apellidos, tipo_documento, documento,
-    fecha_nacimiento, sexo, telefono, correo, direccion,
-    creado_por_usuario_id
-  ) VALUES (
-    p_empresa_id, v_expediente,
-    btrim(p_nombres), btrim(p_apellidos),
-    coalesce(p_tipo_documento,'ninguno'),
-    CASE WHEN coalesce(p_tipo_documento,'ninguno') = 'ninguno'
-         THEN NULL ELSE btrim(p_documento) END,
-    p_fecha_nacimiento, coalesce(p_sexo,'no_especificado'),
-    p_telefono, p_correo, p_direccion,
-    p_usuario_id
+  UPDATE core.paciente
+     SET nombre_completo = v_nombre, tipo_documento = v_tipo, documento = v_documento,
+         fecha_nacimiento = v_fecha, fecha_nacimiento_estimada = v_estimada, sexo = p_sexo,
+         telefono = v_telefono, correo = v_correo, direccion = v_direccion
+   WHERE paciente_id = p_paciente_id;
+
+  INSERT INTO audit.evento (empresa_id, usuario_id, accion, nombre_esquema, nombre_tabla, registro_id, datos_antes, datos_despues)
+  VALUES (v_empresa, v_yo, 'paciente.editar', 'core', 'paciente', p_paciente_id,
+          jsonb_build_object('nombre_completo', v_actual.nombre_completo, 'tipo_documento', v_actual.tipo_documento,
+                             'documento', v_actual.documento, 'fecha_nacimiento', v_actual.fecha_nacimiento,
+                             'fecha_nacimiento_estimada', v_actual.fecha_nacimiento_estimada, 'sexo', v_actual.sexo,
+                             'telefono', v_actual.telefono, 'correo', v_actual.correo, 'direccion', v_actual.direccion),
+          jsonb_build_object('nombre_completo', v_nombre, 'tipo_documento', v_tipo,
+                             'documento', v_documento, 'fecha_nacimiento', v_fecha,
+                             'fecha_nacimiento_estimada', v_estimada, 'sexo', p_sexo,
+                             'telefono', v_telefono, 'correo', v_correo, 'direccion', v_direccion));
+  RETURN true;
+END
+$fn$;
+
+COMMENT ON FUNCTION core.editar_paciente IS
+  'La ficha entera; lo que vino igual no se escribe. Exige paciente.editar. Un '
+  'fusionado no se edita. Una fecha confirmada no vuelve a ser estimada; la misma '
+  'fecha estimada, sin edad, sigue estimada. '
+  'Devuelve false si no cambio nada. Deja paciente.editar con antes y despues.';
+
+-- ---------------------------------------------------------------------
+-- Buscar pacientes
+--
+-- Lo que usa la lista. Sin texto: los ultimos registrados. Con texto, por
+-- parecido y no por texto exacto, en tres escalones:
+--
+--   1. exacto:   la llave del nombre entera, el expediente, o el documento
+--   2. prefijo:  el nombre empieza asi, alguna palabra del nombre empieza
+--                asi, o el expediente / documento empiezan asi
+--   3. parecido: trigramas (pg_trgm), para "sair" -> "Said"
+--
+-- Adentro de cada escalon, por parecido y despues por nombre. Corre como
+-- lis_app: RLS (paciente.ver) recorta las filas; los fusionados no salen.
+-- El umbral de parecido va como SET de la funcion para que el operador
+-- <% use el indice de trigramas.
+-- ---------------------------------------------------------------------
+CREATE OR REPLACE FUNCTION core.buscar_pacientes(p_texto text, p_limite int DEFAULT 50)
+RETURNS TABLE (
+  paciente_id bigint, expediente text, nombre_completo text,
+  tipo_documento plataforma.tipo_documento, documento text,
+  fecha_nacimiento date, fecha_nacimiento_estimada boolean, sexo plataforma.sexo,
+  telefono text, creado_en timestamptz, escalon int
+)
+LANGUAGE sql
+STABLE
+SET pg_trgm.word_similarity_threshold = 0.4
+AS $$
+  WITH q AS (
+    SELECT core.llave_texto(p_texto)      AS llave,
+           core.llave_documento(p_texto)  AS doc,
+           upper(btrim(coalesce(p_texto, ''))) AS crudo
   )
-  RETURNING core.paciente.paciente_id INTO v_paciente;
+  SELECT p.paciente_id, p.expediente, p.nombre_completo, p.tipo_documento, p.documento,
+         p.fecha_nacimiento, p.fecha_nacimiento_estimada, p.sexo, p.telefono, p.creado_en,
+         CASE
+           WHEN q.llave IS NULL THEN 0
+           WHEN core.llave_texto(p.nombre_completo) = q.llave
+             OR upper(p.expediente) = q.crudo
+             OR (q.doc IS NOT NULL AND core.llave_documento(p.documento) = q.doc) THEN 1
+           WHEN core.llave_texto(p.nombre_completo) LIKE q.llave || '%'
+             OR core.llave_texto(p.nombre_completo) LIKE '% ' || q.llave || '%'
+             OR upper(p.expediente) LIKE q.crudo || '%'
+             OR (q.doc IS NOT NULL AND core.llave_documento(p.documento) LIKE q.doc || '%') THEN 2
+           ELSE 3
+         END AS escalon
+    FROM core.paciente p, q
+   WHERE p.fusionado_en_paciente_id IS NULL
+     AND (q.llave IS NULL
+          OR core.llave_texto(p.nombre_completo) LIKE q.llave || '%'
+          OR core.llave_texto(p.nombre_completo) LIKE '% ' || q.llave || '%'
+          OR q.llave <% core.llave_texto(p.nombre_completo)
+          OR upper(p.expediente) LIKE q.crudo || '%'
+          OR (q.doc IS NOT NULL AND core.llave_documento(p.documento) LIKE q.doc || '%'))
+   ORDER BY
+     CASE WHEN q.llave IS NULL THEN 0 ELSE 1 END,
+     CASE WHEN q.llave IS NULL THEN NULL ELSE
+       CASE
+         WHEN core.llave_texto(p.nombre_completo) = q.llave
+           OR upper(p.expediente) = q.crudo
+           OR (q.doc IS NOT NULL AND core.llave_documento(p.documento) = q.doc) THEN 1
+         WHEN core.llave_texto(p.nombre_completo) LIKE q.llave || '%'
+           OR core.llave_texto(p.nombre_completo) LIKE '% ' || q.llave || '%'
+           OR upper(p.expediente) LIKE q.crudo || '%'
+           OR (q.doc IS NOT NULL AND core.llave_documento(p.documento) LIKE q.doc || '%') THEN 2
+         ELSE 3
+       END END,
+     CASE WHEN q.llave IS NULL THEN NULL ELSE public.word_similarity(q.llave, core.llave_texto(p.nombre_completo)) END DESC,
+     CASE WHEN q.llave IS NULL THEN p.creado_en END DESC,
+     p.nombre_completo
+   LIMIT greatest(1, least(coalesce(p_limite, 50), 200))
+$$;
 
-  RETURN QUERY SELECT v_paciente, v_expediente;
-END $$;
-
-COMMENT ON FUNCTION core.registrar_paciente IS
-  'El unico camino para crear un paciente. El expediente se llena con lo que '
-  'recepcion escribio y con nada mas: ningun dato entra desde otra empresa.';
+COMMENT ON FUNCTION core.buscar_pacientes IS
+  'La lista de pacientes: sin texto los ultimos registrados; con texto, exacto, '
+  'prefijo y parecido (trigramas), en ese orden. Hasta 200 filas. RLS recorta.';
 
 -- ---------------------------------------------------------------------
 -- Anotar la referencia externa
@@ -2045,11 +2354,12 @@ END $$;
 
 -- ---------------------------------------------------------------------
 -- Posibles duplicados DENTRO de la misma empresa
+--
+-- (Pendiente de pantalla. Queda por el nombre completo normalizado y el ano
+-- de nacimiento; corre como lis_app y RLS recorta a la empresa.)
 -- ---------------------------------------------------------------------
 CREATE OR REPLACE FUNCTION core.posibles_duplicados(
-  p_empresa_id       bigint,
-  p_apellidos        text,
-  p_nombres          text,
+  p_nombre_completo  text,
   p_fecha_nacimiento date
 )
 RETURNS TABLE (
@@ -2065,19 +2375,17 @@ STABLE
 AS $$
   SELECT p.paciente_id, p.expediente, p.nombre_completo, p.fecha_nacimiento, p.documento,
          CASE
-           WHEN p.fecha_nacimiento = p_fecha_nacimiento THEN 'apellidos y fecha exacta'
-           ELSE 'apellidos y ano de nacimiento'
+           WHEN p.fecha_nacimiento = p_fecha_nacimiento THEN 'nombre y fecha exacta'
+           ELSE 'nombre y ano de nacimiento'
          END
   FROM core.paciente p
-  WHERE p.empresa_id = p_empresa_id
-    AND p.fusionado_en_paciente_id IS NULL
-    AND upper(public.unaccent_simple(p.apellidos)) = upper(public.unaccent_simple(p_apellidos))
+  WHERE p.fusionado_en_paciente_id IS NULL
+    AND core.llave_texto(p.nombre_completo) = core.llave_texto(p_nombre_completo)
     AND (
       p.fecha_nacimiento = p_fecha_nacimiento
       OR extract(year from p.fecha_nacimiento) = extract(year from p_fecha_nacimiento)
     )
   ORDER BY (p.fecha_nacimiento = p_fecha_nacimiento) DESC, p.creado_en DESC
-  LIMIT 20
 $$;
 
 COMMENT ON FUNCTION core.posibles_duplicados IS

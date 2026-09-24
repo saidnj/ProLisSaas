@@ -1,0 +1,137 @@
+<app-encabezado />
+
+<div class="pagina">
+
+  <div class="cabecera">
+    <div>
+      <h1>Pacientes</h1>
+      <p class="sub">
+        Cada paciente tiene un expediente de la empresa: se registra una vez y se
+        atiende en cualquier sede.
+      </p>
+    </div>
+
+    @if (puedeCrear()) {
+      <div class="acciones">
+        <a class="boton primario" routerLink="/pacientes/nuevo">+ Registrar paciente</a>
+      </div>
+    }
+  </div>
+
+  @if (error()) {
+    <p class="error-caja" role="alert">{{ error() }}</p>
+  }
+
+  <div class="panel">
+    <div class="barra-panel">
+      <!-- El circulo gira desde la primera tecla; la peticion sale cuando se
+           deja de escribir. Ver lista-pacientes.ts. -->
+      <div class="buscador-envoltura">
+        <input class="buscador" type="text"
+               placeholder="Buscar por nombre, expediente o documento..."
+               [value]="busqueda()"
+               (input)="alEscribir($any($event.target).value)"
+               autocomplete="off" />
+        @if (buscando()) {
+          <span class="girador" aria-label="Buscando..."></span>
+        }
+      </div>
+
+      @if (busqueda()) {
+        <button type="button" class="boton fantasma chico" (click)="limpiar()">Limpiar</button>
+      }
+
+      <span class="cuenta">
+        @if (buscado()) {
+          {{ pacientes().length }} {{ pacientes().length === 1 ? 'coincidencia' : 'coincidencias' }}
+        } @else {
+          {{ pacientes().length === 0 ? 'Ninguno todavia' : 'Los ultimos ' + pacientes().length + ' registrados' }}
+        }
+      </span>
+    </div>
+
+    @if (cargando()) {
+      <p class="cargando">Cargando pacientes...</p>
+
+    } @else if (pacientes().length === 0 && !buscado()) {
+      <div class="estado">
+        <strong>Todavia no hay pacientes registrados</strong>
+        <p>El primero se registra con el boton de arriba.</p>
+        @if (puedeCrear()) {
+          <a class="boton primario" routerLink="/pacientes/nuevo">Registrar paciente</a>
+        }
+      </div>
+
+    } @else if (pacientes().length === 0) {
+      <div class="estado">
+        <strong>Ningun paciente coincide con "{{ buscado() }}"</strong>
+        <p>Se busca por nombre (aunque este mal escrito), por expediente o por documento.</p>
+        @if (puedeCrear()) {
+          <a class="boton suave" routerLink="/pacientes/nuevo">Registrar paciente</a>
+        }
+      </div>
+
+    } @else {
+      <div class="tabla-envoltura" [class.desactualizada]="buscando()">
+        <table class="tabla">
+          <thead>
+            <tr>
+              <th>Expediente</th>
+              <th>Paciente</th>
+              <th>Documento</th>
+              <th>Edad</th>
+              <th>Sexo</th>
+              <th>Telefono</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (p of pacientes(); track p.pacienteId) {
+              <tr>
+                <td class="sin-corte"><span class="expediente">{{ p.expediente }}</span></td>
+
+                <td>
+                  <div class="principal">{{ p.nombreCompleto }}</div>
+                </td>
+
+                <td class="sin-corte">
+                  @if (p.documento) {
+                    <div>{{ p.documento }}</div>
+                    <div class="secundario">{{ tipoDocumento(p) }}</div>
+                  } @else {
+                    <span class="apagado">—</span>
+                  }
+                </td>
+
+                <td class="sin-corte">
+                  <!-- Con fecha estimada (se registro con la edad, no con la
+                       fecha) la edad lleva un ~ delante. -->
+                  <span class="edad" [class.estimada]="p.fechaEstimada"
+                        [title]="p.fechaEstimada ? 'Fecha de nacimiento estimada: se registro con la edad' : ''">
+                    {{ p.fechaEstimada ? '~ ' : '' }}{{ edad(p) }}
+                  </span>
+                </td>
+
+                <td>{{ p.sexo === 'femenino' ? 'F' : 'M' }}</td>
+
+                <td class="sin-corte">{{ p.telefono ?? '—' }}</td>
+
+                <td>
+                  <div class="acciones-fila">
+                    <a class="boton fantasma chico" [routerLink]="['/pacientes', p.pacienteId]">Ver</a>
+                    @if (puedeEditar()) {
+                      <a class="boton suave chico" [routerLink]="['/pacientes', p.pacienteId, 'editar']">Editar</a>
+                    }
+                    <!-- Todavia no hay boletas: el boton esta para que se vea
+                         donde va a estar. Apagado, no hace nada. -->
+                    <button type="button" class="boton suave chico" disabled title="Pronto">Crear boleta</button>
+                  </div>
+                </td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+    }
+  </div>
+</div>

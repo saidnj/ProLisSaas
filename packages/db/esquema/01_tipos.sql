@@ -59,8 +59,7 @@ CREATE TYPE plataforma.nivel_permiso AS ENUM ('normal', 'admin', 'propietario');
 
 CREATE TYPE plataforma.sexo AS ENUM (
   'femenino',
-  'masculino',
-  'no_especificado'
+  'masculino'
 );
 
 COMMENT ON TYPE plataforma.sexo IS
@@ -396,6 +395,13 @@ CREATE TYPE comercial.papel_contacto AS ENUM (
 -- Para el EXCLUDE de mas abajo: gist necesita saber comparar bigint por
 -- igualdad al lado de un rango, y eso lo trae esta extension.
 CREATE EXTENSION IF NOT EXISTS btree_gist;
+
+-- Para buscar pacientes por parecido y no por texto exacto: "sair" tiene que
+-- encontrar a Sair primero y a Said despues. Trigramas (viene con PostgreSQL;
+-- en Windows tambien). Se usa con el esquema puesto (public.word_similarity,
+-- public.gin_trgm_ops): desde PostgreSQL 17 los indices se construyen con
+-- search_path = pg_catalog y un nombre sin esquema no se encuentra.
+CREATE EXTENSION IF NOT EXISTS pg_trgm;
 
 
 -- =====================================================================

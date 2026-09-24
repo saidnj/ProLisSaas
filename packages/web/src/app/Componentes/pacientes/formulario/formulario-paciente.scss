@@ -1,0 +1,51 @@
+// Solo lo propio de esta pantalla. Lo compartido (pagina, panel, campos, botones, avisos) es global: src/estilos/.
+
+// El bloque de la fecha de nacimiento / la edad: enmarcado, porque es la
+// unica parte del formulario con dos caras y conviene que se vea como una
+// sola cosa. Cuando se esta estimando, el marco pasa a ambar.
+.nacimiento {
+  padding: 0.9rem 1rem 1rem;
+  border: 1px solid var(--borde);
+  border-radius: 10px;
+
+  &.estimando { border-color: #fedf89; background: #fffdf5; }
+
+  // Adentro va otra rejilla de campos (la fecha y el boton; o anios, meses y el boton).
+  > .campos { margin-top: 0; }
+  .campos + .aviso-estimada, .campos + .mal-campo { margin-top: 0.75rem; }
+  > .mal-campo { display: block; }
+  > .aviso-estimada:last-child { margin-bottom: 0; }
+  .mal-campo + .aviso-estimada { margin-top: 0.5rem; }
+}
+
+// "Si no se sabe la fecha exacta": una columna con etiqueta, pista y boton,
+// alineada con el campo de al lado (mismo orden que label.campo).
+.campo.alternativa {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+  font-size: 0.8rem;
+
+  > span:first-child { font-weight: 600; }
+  > .pista { order: 3; margin-top: 0.15rem; color: var(--suave); font-size: 0.75rem; }
+  > .boton { order: 2; align-self: flex-start; height: 2.4rem; }
+}
+
+// Lo que va a quedar / lo que ya es estimado: ambar, no rojo. No es un
+// error -- se puede guardar asi -- es algo que hay que saber.
+.aviso-estimada {
+  margin: 0 0 0.75rem;
+  padding: 0.6rem 0.8rem;
+  border-radius: 8px;
+  background: #fffaeb;
+  border: 1px solid #fedf89;
+  color: #93370d;
+  font-size: 0.8rem;
+  line-height: 1.5;
+
+  &.vacia { background: #fafbfd; border-color: var(--borde); color: var(--suave); }
+  &.confirma { margin: 0.75rem 0 0; }
+}
+
+// Los numeros de la edad: cortos.
+.campos.edad input[type='number'] { max-width: 8rem; }

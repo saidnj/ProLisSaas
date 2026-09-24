@@ -25,11 +25,10 @@ RETURNING usuario_id AS usr \gset
 SELECT convenio_id AS conv FROM core.convenio WHERE empresa_id = :emp AND es_predeterminado \gset
 
 -- Paciente masculino adulto (el del mensaje de prueba.txt)
-INSERT INTO core.paciente (empresa_id, expediente, nombres, apellidos,
-                           tipo_documento, documento, fecha_nacimiento, sexo,
-                           creado_por_usuario_id)
+INSERT INTO core.paciente (empresa_id, expediente, nombre_completo,
+                           tipo_documento, documento, fecha_nacimiento, sexo)
 VALUES (:emp, core.siguiente_correlativo(:emp,NULL,'expediente'),
-        'SAID GABRIEL','HOCH URBINA','identidad','1807200400844','2002-11-15','masculino', :usr)
+        'SAID GABRIEL HOCH URBINA','identidad','1807200400844','2002-11-15','masculino')
 RETURNING paciente_id AS pac \gset
 
 INSERT INTO core.episodio (empresa_id, sucursal_id, paciente_id, convenio_id,
@@ -131,10 +130,9 @@ ORDER BY a.codigo;
 \echo ''
 \echo '=== 5 · EL PUNTO DEL DISENO ======================================='
 \echo '    La MISMA hemoglobina de 13.0 en un paciente hombre y en una mujer'
-INSERT INTO core.paciente (empresa_id, expediente, nombres, apellidos,
-                           fecha_nacimiento, sexo, creado_por_usuario_id)
+INSERT INTO core.paciente (empresa_id, expediente, nombre_completo, fecha_nacimiento, sexo)
 VALUES (:emp, core.siguiente_correlativo(:emp,NULL,'expediente'),
-        'MARIA','LOPEZ','1990-05-20','femenino', :usr)
+        'MARIA LOPEZ','1990-05-20','femenino')
 RETURNING paciente_id AS pac2 \gset
 INSERT INTO core.episodio (empresa_id, sucursal_id, paciente_id, convenio_id, numero, creado_por_usuario_id)
 VALUES (:emp,:suc,:pac2,:conv, core.siguiente_correlativo(:emp,:suc,'episodio'), :usr)

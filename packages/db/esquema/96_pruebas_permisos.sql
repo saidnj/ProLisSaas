@@ -67,9 +67,11 @@ RESET lis.sucursal_id;
 
 -- Montaje minimo para llegar a un resultado.
 SELECT convenio_id AS conv FROM core.convenio WHERE empresa_id=:emp AND es_predeterminado \gset
-SELECT * FROM core.registrar_paciente(
-  :emp,'SAID','HOCH','identidad','1807200400844',DATE '2004-11-15','masculino',
-  NULL,NULL,NULL,:u_rec) \gset
+-- registrar_paciente lee la sesion (empresa, usuario, sede) y exige paciente.crear.
+SET lis.empresa_id = :'emp'; SET lis.usuario_id = :'u_rec'; SET lis.sucursal_id = :'suc';
+SELECT core.registrar_paciente('SAID HOCH','identidad','1807200400844',
+  DATE '2004-11-15',NULL,NULL,'masculino') AS paciente_id \gset
+RESET lis.empresa_id; RESET lis.usuario_id; RESET lis.sucursal_id;
 INSERT INTO core.episodio (empresa_id, sucursal_id, paciente_id, convenio_id, numero, creado_por_usuario_id)
 VALUES (:emp,:suc,:paciente_id,:conv, core.siguiente_correlativo(:emp,:suc,'episodio'), :u_rec)
 RETURNING episodio_id AS epi \gset

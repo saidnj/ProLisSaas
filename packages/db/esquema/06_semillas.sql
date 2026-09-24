@@ -186,3 +186,23 @@ VALUES
    'Pidio cortar el acceso antes de que venza',      'bloqueado', NULL, NULL, NULL, true,  true)
 ON CONFLICT (motivo_id) DO NOTHING;
 
+-- ---------------------------------------------------------------------
+-- Los parches que este esquema ya contiene. Una base cargada desde estos
+-- archivos no tiene que correr ninguno: quedan anotados como aplicados.
+-- Cada parche nuevo agrega su nombre aqui Y se anota solo al correr.
+-- ---------------------------------------------------------------------
+INSERT INTO plataforma.migracion (nombre) VALUES
+  ('2026-09-21_acceso_sucursal'),
+  ('2026-09-21_activacion'),
+  ('2026-09-22_desbloqueo'),
+  ('2026-09-22_propietario'),
+  ('2026-09-22_rls_permisos'),
+  ('2026-09-23_cuenta'),
+  ('2026-09-23_cuenta_siempre'),
+  ('2026-09-23_empleado_unico'),
+  ('2026-09-23_permiso_unico'),
+  ('2026-09-24_roles'),
+  ('2026-09-24_ficha'),
+  ('2026-09-25_cerrar'),
+  ('2026-09-25_pacientes')
+ON CONFLICT DO NOTHING;

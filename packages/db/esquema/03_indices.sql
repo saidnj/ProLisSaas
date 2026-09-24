@@ -79,13 +79,28 @@ CREATE UNIQUE INDEX uq_empleado_colegiacion
 CREATE UNIQUE INDEX uq_rol_nombre
   ON core.rol (empresa_id, core.llave_texto(nombre));
 
--- Unico solo cuando hay documento, y por empresa.
+-- Unico solo cuando hay documento, y por empresa. Por la LLAVE del documento
+-- (solo letras y numeros, en mayusculas): "0801-2004-00844" y "0801200400844"
+-- son el mismo, como en empleados.
 CREATE UNIQUE INDEX uq_paciente_documento
-  ON core.paciente (empresa_id, tipo_documento, documento)
+  ON core.paciente (empresa_id, tipo_documento, core.llave_documento(documento))
   WHERE documento IS NOT NULL AND fusionado_en_paciente_id IS NULL;
 
-CREATE INDEX ix_paciente_nombre
-  ON core.paciente (empresa_id, nombre_completo text_pattern_ops)
+-- La busqueda por nombre es por parecido (core.buscar_pacientes): trigramas
+-- sobre la llave del nombre (minusculas, sin acentos). GIN, y con el esquema
+-- del opclass puesto por lo de PostgreSQL 17 (ver 01_tipos.sql).
+CREATE INDEX ix_paciente_nombre_trgm
+  ON core.paciente USING gin (core.llave_texto(nombre_completo) public.gin_trgm_ops)
+  WHERE fusionado_en_paciente_id IS NULL;
+
+-- Documento y expediente se buscan por prefijo.
+CREATE INDEX ix_paciente_documento
+  ON core.paciente (empresa_id, core.llave_documento(documento) text_pattern_ops)
+  WHERE documento IS NOT NULL AND fusionado_en_paciente_id IS NULL;
+
+-- Sin texto, la lista trae los ultimos registrados.
+CREATE INDEX ix_paciente_reciente
+  ON core.paciente (empresa_id, creado_en DESC)
   WHERE fusionado_en_paciente_id IS NULL;
 
 -- Una sola referencia vigente por contraparte. El historico si puede tener

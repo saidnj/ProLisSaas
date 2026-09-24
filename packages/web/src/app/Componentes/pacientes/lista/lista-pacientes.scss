@@ -1,0 +1,30 @@
+// Solo lo propio de esta pantalla. Lo compartido (pagina, panel, buscador, tabla, chips, girador) es global: src/estilos/.
+
+// El buscador con el circulo adentro, a la derecha.
+.buscador-envoltura {
+  position: relative;
+  flex: 1 1 14rem;
+  max-width: 22rem;
+  display: flex;
+  align-items: center;
+
+  .buscador { width: 100%; max-width: none; padding-right: 2.2rem; }
+
+  .girador { position: absolute; right: 0.7rem; }
+}
+
+// Mientras se escribe, la tabla que se ve es la de la busqueda ANTERIOR:
+// se atenua para que no se lea como la respuesta a lo que se esta escribiendo.
+.tabla-envoltura.desactualizada { opacity: 0.55; transition: opacity 0.2s ease; }
+
+.expediente {
+  font-family: ui-monospace, 'Cascadia Mono', Consolas, monospace;
+  font-size: 0.82rem;
+  color: var(--suave);
+}
+
+// Lo que no se parte en dos lineas: el expediente, el documento, la edad, el telefono.
+.sin-corte { white-space: nowrap; }
+
+// La edad estimada: gris y en cursiva, con el ~ delante (esta en el HTML).
+.edad.estimada { color: var(--suave); font-style: italic; }

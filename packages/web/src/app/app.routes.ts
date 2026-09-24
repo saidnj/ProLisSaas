@@ -63,6 +63,47 @@ export const routes: Routes = [
   },
 
   // -------------------------------------------------------------------
+  // PACIENTES: la lista y la ficha con paciente.ver; registrar con
+  // paciente.crear; editar con paciente.editar. Son permisos de nivel
+  // normal (los tiene Recepcion). Mismo orden que empleados: 'nuevo'
+  // antes que ':id'.
+  // -------------------------------------------------------------------
+  {
+    path: 'pacientes',
+    title: 'Pacientes - ProLisSaas',
+    canActivate: [sucursalGuard, permisoGuard],
+    data: { permiso: 'paciente.ver' },
+    loadComponent: () =>
+      import('./Componentes/pacientes/lista/lista-pacientes').then((m) => m.ListaPacientes),
+  },
+  {
+    path: 'pacientes/nuevo',
+    title: 'Registrar paciente - ProLisSaas',
+    canActivate: [sucursalGuard, permisoGuard],
+    data: { permiso: 'paciente.crear' },
+    loadComponent: () =>
+      import('./Componentes/pacientes/formulario/formulario-paciente').then(
+        (m) => m.FormularioPaciente),
+  },
+  {
+    path: 'pacientes/:id',
+    title: 'Paciente - ProLisSaas',
+    canActivate: [sucursalGuard, permisoGuard],
+    data: { permiso: 'paciente.ver' },
+    loadComponent: () =>
+      import('./Componentes/pacientes/detalle/detalle-paciente').then((m) => m.DetallePaciente),
+  },
+  {
+    path: 'pacientes/:id/editar',
+    title: 'Editar paciente - ProLisSaas',
+    canActivate: [sucursalGuard, permisoGuard],
+    data: { permiso: 'paciente.editar' },
+    loadComponent: () =>
+      import('./Componentes/pacientes/formulario/formulario-paciente').then(
+        (m) => m.FormularioPaciente),
+  },
+
+  // -------------------------------------------------------------------
   // EMPLEADOS
   //
   // OJO CON EL ORDEN: 'empleados/nuevo' va ANTES que 'empleados/:id'. El
